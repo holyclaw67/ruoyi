@@ -5,9 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Changelog
+## [2.3.1] - 2026-08-11
 
-All notable changes to this project will be documented in this file.
+### Added
+- Full CI suite under `tests/` (CLI, install lifecycle, domain) with TP-ID labels
+- Product TP map `docs/reviews/test-plan.md` and RTM `docs/reviews/requirement-test-matrix.md`
+- Product law set (class, bootstrap chain, domain, Type O-S online install, least-privilege, coding, error-handling, …)
+
+### Changed
+- Specialized ship unit from bootstrap **selfmanaged** (A→B): Type 0 architecture + RuoYi domain
+- Version **2.3.1** (revision after specialize, mold coverage, suite, SDKMAN set -u fixes)
+- README version badge aligned
+
+### Fixed
+- SDKMAN init and `sdk` under `set -u` (`_ruo_sdk`, safe source)
+- `util_src_user_shell_conf` no longer sources full `.bashrc` (hang/exit under non-interactive)
+- `app_main` defaults for `NO_RUN` / `PROJECT_DIR` / `PORT`
+
+### Security
+- Domain elev remains internal-sudo scoped (see `requirement-shell-least-privilege.md`)
+
+---
 
 ## [2.2.2] - 2026-04-29
 

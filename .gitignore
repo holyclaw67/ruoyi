@@ -1,38 +1,56 @@
-cat > .gitignore << 'EOF'
 # =============================================================================
-# .gitignore - git-sync + ShellParser
+# .gitignore — ruoyi (product)
 # =============================================================================
 
-# ShellParser temporary / generated directories (MUST be ignored)
-target/
+# Secrets / local env
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
 
-# Backup files created by ShellParser replace command
-git-sync.20[0-9][0-9][0-9][0-9][0-9][0-9]-*
+# OS
+.DS_Store
+.DS_Store?
+Thumbs.db
+Desktop.ini
 
-# Common editor / IDE files
+# Editors / IDEs
 *.swp
 *.swo
 *~
-.vscode/
 .idea/
-.DS_Store
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.code-workspace
 
-# Python / pip cache
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
 .Python
-env/
+.venv/
 venv/
-ENV/
+env/
 
-# macOS
-.AppleDouble
-.LSOverride
+# ShellParser / build debris
+target/
 
-# Temporary files
+# Backup / temp
 *.tmp
-*.bak
 *.log
-EOF
+*.bak
+*.before-full-rename.*
+git-sync.20[0-9][0-9][0-9][0-9][0-9][0-9]-*
+
+# Local specialize archives (not product ship)
+.specialize-archive/
+
+# Harness agent OS contract (workspace-local; not product public entry)
+AGENTS.md
+
+# Bootstrap reference binary if present only as local freeze (keep product ship unit ruoyi)
+# selfmanaged is optional local reference — ignore by default to avoid reverse-copy pollution in product tree
+selfmanaged
+selfmanaged.sha256
+selfmanaged.*
