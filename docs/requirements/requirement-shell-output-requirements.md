@@ -6,6 +6,30 @@
 
 This requirement is the **project Single Source of Truth** for **all CLI output** of the ruoyi POSIX shell tool: human messages, machine JSON, channel split (stdout vs stderr), and mode behavior (normal / quiet / JSON / debug).
 
+### 1.1 Human-facing
+
+**In one sentence:** Everything ruoyi prints to you goes through one output family so `--quiet` and `--json` stay consistent.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Human or script consuming output | `ruoyi version --json` |
+| The other role | `--quiet` / `--json` automation | Info lines suppressed; errors still visible |
+| Not this file | Which commands exist | `requirement-shell-cli-interface` |
+
+| Includes | Excludes |
+|----------|----------|
+| `out_*` only for user-facing text | Raw `echo` of product messages |
+| JSON on stdout; errors still structured | Mixing banners into `--json` success |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | `out_info` / `out_json` / `out_die` |
+| `ruoyi version --quiet` | command | empty stdout on success |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Script the version | Machine JSON, no banner. | `ruoyi --json version` |
+
 It defines the centralized output system and stdout/stderr channel contracts for this shell project.
 
 **Scope:** Central `out_*` system, mode contracts, channel rules, JSON purity, quiet filtering, TTY colors, fatal error emission.  

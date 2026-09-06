@@ -6,6 +6,30 @@
 
 This requirement is the **project Single Source of Truth** for **modular function organization** of the ruoyi POSIX shell CLI.
 
+### 1.1 Human-facing
+
+**In one sentence:** The product is one script you can curl, organized as named function groups (output, install, domain) so a change stays in one prefix.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Maintainer editing `./ruoyi` | Change output in `out_*`, install in `inst_*` |
+| The other role | Domain prefixes `ruo_*` / `db_*` / `setup_*` | RuoYi stack, not CLI lifecycle |
+| Not this file | Command names users type | `requirement-shell-cli-interface` |
+
+| Includes | Excludes |
+|----------|----------|
+| Prefix table, single-file `curl \| bash` shape | Splitting the shipped CLI into many files |
+| Protection Zones on critical helpers | Unprefixed one-off helpers as the default style |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | function prefixes |
+| `bash -n ./ruoyi` | syntax check | suite TP-CLI-01 |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Check syntax | The single file must parse. | `bash -n ./ruoyi` |
+
 It defines modular function organization for a **monolithic yet modular** single-file shell tool that remains `curl | sh` compatible.
 
 **Scope:** Function prefixes, documentation headers, Protection Zones, single-file modularity, SSOT ownership by prefix, surgical change rules.  

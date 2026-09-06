@@ -11,6 +11,31 @@ This requirement is the **project Single Source of Truth** for **automatic compa
 
 **Must not confuse with:** Embedding a hash of `./ruoyi` *inside* `./ruoyi`; requiring operators to set `CHECKSUM` for every install; claiming independent host authenticity from same-channel SHA-256 alone.
 
+### 1.1 Human-facing
+
+**In one sentence:** When you install or update `ruoyi` from the internet, the program itself downloads a SHA-256 companion file, then shows you the **link**, the expected **value**, and whether it **matched**.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Anyone running online install or `self-update` | No extra env pin required for the default path |
+| The other role | Optional CI pin (`CHECKSUM`) — secondary, not listed in `help` | Process environment only |
+| Not this file | The curl one-liner and empty-argv install-ensure | `requirement-shell-online-install` |
+
+| Includes | Excludes |
+|----------|----------|
+| Automatic `${SCRIPT_URL}.sha256`; match / mismatch / missing sidecar | Independent signing / a second trust root |
+| Human transparency: link, value, result | Leading install docs with `export CHECKSUM=$(curl …sha256)` |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | verify on install / self-update |
+| `ruoyi.sha256` | companion file | publisher digest next to the script |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Default install | Program fetches the sidecar; you do not set a pin. | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| bash` |
+| After editing the script | Refresh the companion so automatic mode can match. | `sha256sum ruoyi \| awk '{print $1"  ruoyi"}' > ruoyi.sha256` |
+
 ---
 
 ## 2. Core Rules / Requirements (Mandatory)

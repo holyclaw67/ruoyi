@@ -8,7 +8,32 @@
 
 SSOT for **command privilege classification** and **internal elevation** for product **ruoyi**. Protects operators from running the entire CLI as root for routine work, while allowing scoped elevation for host package/DB/Redis ops.
 
-**Not:** dedicated long-running system-user service model (Type 2 app user) — **not required** for this product.
+**Not:** dedicated long-running system-user service model — **not required** for this product.
+
+### 1.1 Human-facing
+
+**In one sentence:** You run ruoyi as yourself; only MariaDB/MySQL/Redis setup may call `sudo` for packages and services, and you should not prefix the whole command with `sudo` for daily work.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Daily install, setup, run, about | `ruoyi setup --no-run` as yourself |
+| The other role | Host package/DB/Redis steps | `ruoyi mariadb` may use internal `sudo` |
+| Not this file | A dedicated long-running system account | Not on this product’s surface |
+
+| Includes | Excludes |
+|----------|----------|
+| Classify every dispatcher command: you / host-elev / dedicated account | Collapsing host-elev into “always `sudo ruoyi`” |
+| Internal `sudo` only for apt/service/mysql client ops | Inventing a dest-approver account |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | internal `sudo` call sites |
+| `ruoyi help` | command | which verbs may elevate |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Daily work | Your own login; no whole-CLI sudo. | `ruoyi setup --no-run` |
+| Database packages | Tool may ask sudo for that step only. | `ruoyi mariadb` |
 
 ## 2. Core rules
 

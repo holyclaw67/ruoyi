@@ -8,6 +8,30 @@
 
 SSOT for **install path Config variables** and **shell PATH integration** after **user-bin** install of `ruoyi`. Global install **MUST NOT** require user rc edits.
 
+### 1.1 Human-facing
+
+**In one sentence:** After a user install, ruoyi makes sure `~/.local/bin` is on your PATH; a system-wide install does not edit your shell startup files.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | User install into `~/.local/bin` | Need PATH so `ruoyi` is found |
+| The other role | Root global install into `/usr/local/bin` | Already on default PATH; no rc edit |
+| Not this file | Java project folder | `requirement-project-folder` |
+
+| Includes | Excludes |
+|----------|----------|
+| `USER_BIN` / `GLOBAL_BIN` Config; PATH append for user-bin | Editing rc files on global install |
+| `HOME` resolved before `USER_BIN` under `set -u` | Treating `PROJECT_DIR` as the install path |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `~/.local/bin/ruoyi` | user binary | user install |
+| `/usr/local/bin/ruoyi` | global binary | root install |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| User install | Binary in your bin; PATH integrated if needed. | `ruoyi install` |
+
 ## 2. Installation paths
 
 ### 2.1 Shell variables (install path Config SSOT)

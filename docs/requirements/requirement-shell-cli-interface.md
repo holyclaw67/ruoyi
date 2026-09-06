@@ -6,7 +6,32 @@
 
 This requirement is the **project Single Source of Truth** for the **POSIX shell CLI interface** of the ruoyi tool: command surface, privilege typing, global flags, dispatcher behavior, output modes, and interactive vs non-interactive rules.
 
-It defines a **Type 0–centric self-managed shell CLI** (install / update / uninstall of the tool itself). It does **not** invent Type 1 host-bootstrap or Type 2 system-user app-ops commands unless a future requirement adds them.
+It defines a self-managed shell CLI (install / update / uninstall of the tool itself). It does **not** invent host-bootstrap or dedicated-system-user app-ops commands unless a future requirement adds them.
+
+### 1.1 Human-facing
+
+**In one sentence:** This file is the list of commands and flags you can type to `ruoyi`, and how unknown words fail.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Anyone invoking `ruoyi` | `ruoyi help` · `ruoyi version` |
+| The other role | Domain verbs owned in depth by the domain file | `setup`, `mariadb`, `run` — also named here for routing |
+| Not this file | Checksum algorithm, empty-argv case matrix, `out_*` catalog | Peer shell requirements |
+
+| Includes | Excludes |
+|----------|----------|
+| Command table, flags, dispatcher, unknown-command fatal | Checksum sidecar policy |
+| Dual mention: every live verb is named here **and** on a topic-owner | Treating `help` text as the second law mention |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | `app_main` routing |
+| `ruoyi help` | command | listed verbs and flags |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| See the catalog | Help lists every routed verb. Unknown tokens fail with a pointer to help. | `ruoyi help` |
+| Unknown word | Loud error; no silent ignore. | `ruoyi no-such-command` |
 
 **Scope:** User-facing command names, flags, dispatch, privilege labels, and mode contracts.  
 **Out of scope (own requirements when specialized):** Online-install checksum mechanics detail, self-management safety beyond the command surface, shell coding style, full output-function catalog (cited, not re-owned).
@@ -82,7 +107,7 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | **Primary executable** | Repo root `./ruoyi` (`#!/bin/bash`, single-file for `curl \| bash`; re-exec into bash when needed) |
 | **Dispatcher** | `app_main` (always invoked at end of script: `app_main "$@"` — no `${0##*/}` / APP_NAME basename gate; required for `curl \| sh`) |
 | **Output SSOT** | `out_text` + wrappers (`out_info`, `out_success`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_json`, …) |
-| **Version SSOT** | `VERSION` hard-assign `2.3.1` (script header / config block) |
+| **Version SSOT** | `VERSION` hard-assign `2.3.2` (script header / config block) |
 | **Install paths** | Global: `GLOBAL_BIN` default `/usr/local/bin`; User: `USER_BIN` default `${HOME}/.local/bin` |
 | **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `cloudgen` / `ruoyi`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
 | **Type 1 / Type 2 surface** | Domain may escalate with **internal `sudo`** for package/DB ops (`mariadb`/`mysql`/`redis`); default CLI lifecycle remains Type 0. Domain catalog: `requirement-domain-ruoyi.md` |

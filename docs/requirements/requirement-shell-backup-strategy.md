@@ -8,6 +8,30 @@
 
 SSOT for **dated backup before destructive mutation** of project trees and config files touched by domain ops (clone replace, yml rewrite). Complements install staging (temp download) which is owned by online-install / self-management.
 
+### 1.1 Human-facing
+
+**In one sentence:** Before ruoyi overwrites your RuoYi project folder or the database YAML, it makes a dated backup.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Operator re-running `setup` on an existing clone | Second `ruoyi setup --no-run` should not silently destroy edits |
+| The other role | Installer staging of the CLI binary (temp download) | Owned by online-install / self-management, not this file |
+| Not this file | Which folder is the Java project | `requirement-project-folder` |
+
+| Includes | Excludes |
+|----------|----------|
+| Dated backup of `PROJECT_DIR` / `application-druid.yml` before replace | Scratch under `/dev/shm` |
+| Fail loud or documented warn on backup helper failure | Logging secrets in backup filenames |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | `util_backup` call sites |
+| `$PROJECT_DIR` | Java project | tree being backed up |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Re-run setup | Existing project should be backed up before a force re-clone. | `ruoyi setup --no-run --project-dir "$HOME/ruoyi-demo"` |
+
 ## 2. Classify data before mutate (mandatory)
 
 | Data class | Examples | Backup required before destructive mutate? |

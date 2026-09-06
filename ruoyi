@@ -74,8 +74,8 @@ APP_NAME="ruoyi"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX/bash Type 0 CLI + RuoYi domain: install, version-check, self-update, self-uninstall, about, mariadb, mysql, redis, run, db-extract.}"
 # Product version SSOT (semver). Extractors use: grep '^VERSION="'
-VERSION="2.3.1"
-: "${VERSION:=2.3.1}"
+VERSION="2.3.2"
+: "${VERSION:=2.3.2}"
 
 # Runtime flags (safe defaults)
 : "${QUIET:=0}"
@@ -4120,7 +4120,11 @@ ruo_about() {
     : "${PORT:=8080}"
     : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME:-ruoyi-demo}}"
     : "${APP_NAME:=ruoyi}"
-    : "${VERSION:=2.3.1}"
+    : "${VERSION:=2.3.2}"
+    if [ -z "${EFFECTIVE_STORAGE_DIR:-}" ]; then
+        EFFECTIVE_STORAGE_DIR=$(util_resolve_storage)
+    fi
+    : "${STORAGE_DIR:=${XDG_CACHE_HOME:-${HOME}/.cache}/${APP_NAME}-${USERNAME}}"
     if [ "${JSON}" -eq 1 ]; then
         # === JSON MODE - Clean machine output ===
         local installed="false"
@@ -4162,7 +4166,9 @@ ruo_about() {
             "port" "${PORT}" \
             "app_running" "${app_running}" \
             "user" "${USERNAME}" \
-            "shell" "$(ps -p $$ -o comm= 2>/dev/null | tr -d '()')"
+            "shell" "$(ps -p $$ -o comm= 2>/dev/null | tr -d '()')" \
+            "effective_storage" "${EFFECTIVE_STORAGE_DIR}" \
+            "storage_dir" "${STORAGE_DIR}"
 
         return 0
     fi
@@ -4217,6 +4223,10 @@ ruo_about() {
         running_status="yes"
     fi
     msg "App on port ${PORT} : ${running_status}"
+
+    out_empty_line
+    out_info "Storage (effective): ${EFFECTIVE_STORAGE_DIR}"
+    out_info "Storage (config)   : ${STORAGE_DIR}"
 
     out_empty_line
     msg "Use '${APP_NAME} about --json' for machine-readable output."

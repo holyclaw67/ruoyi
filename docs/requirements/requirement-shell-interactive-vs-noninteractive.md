@@ -6,6 +6,30 @@
 
 This requirement is the **project Single Source of Truth** for how the ruoyi **POSIX shell CLI** behaves in **interactive** (human + TTY) versus **non-interactive** (automation, `curl | sh`, CI/CD, pipes, `--json` / often `--quiet`) environments.
 
+### 1.1 Human-facing
+
+**In one sentence:** On a real terminal ruoyi may ask before uninstall; in a pipe, CI, or `--json` it never waits for a keypress.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Human on a terminal | `ruoyi self-uninstall` may confirm |
+| The other role | Scripts, `curl \| bash`, `--json` | Auto defaults; no hang |
+| Not this file | Output prefixes / JSON purity | `requirement-shell-output-requirements` |
+
+| Includes | Excludes |
+|----------|----------|
+| TTY measured outside functions; helpers read `TTY` | Live `[ -t` inside every prompt helper as policy |
+| Non-interactive never blocks on stdin | Treating `--json` as an interactive menu |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | confirm vs auto-install |
+| `ruoyi --json self-uninstall` | command | fail closed without `--force` |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Remove in a script | Must pass `--force`; otherwise non-zero, binary remains. | `ruoyi --json --force self-uninstall` |
+
 It defines interactive vs non-interactive behavior for this shell project (global flags + `prompt_*` + TTY detection—not a Node Config singleton).
 
 **Scope:** Mode detection signals, prompt policy, auto-install vs confirm, force/skip rules, interaction with quiet/json/debug and output SSOT.  

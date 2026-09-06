@@ -46,8 +46,25 @@ git-sync.20[0-9][0-9][0-9][0-9][0-9][0-9]-*
 # Local specialize archives (not product ship)
 .specialize-archive/
 
+# Local H1/H2 hop backups (not product)
+.h1-backup-*/
+.h2-backup-*/
+
 # Harness agent OS contract (workspace-local; not product public entry)
 AGENTS.md
+
+# Agent harness / local cadence (Pattern A: track docs/requirements/**)
+docs/skills/
+docs/terminologies/
+docs/policies/
+docs/templates/
+docs/human-intro/
+docs/housekeeping/
+docs/incidents/
+docs/README.md
+docs/.gitignore
+# New filled checklists stay local; already-tracked files remain in the index
+docs/checklists/
 
 # Bootstrap reference binary if present only as local freeze (keep product ship unit ruoyi)
 # selfmanaged is optional local reference — ignore by default to avoid reverse-copy pollution in product tree

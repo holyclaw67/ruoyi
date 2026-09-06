@@ -8,7 +8,32 @@
 
 Declare this workspace as a **software-development** project class and hold the **residual collection** of software-engineering stack facts **not already owned** by more specific Active `requirement-shell-*.md` peers: primary language, toolchain policy, package/test tooling, and runtime OS family.
 
-This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycle, checksum, output, or storage tables (those stay on peer shell requirements).
+This file is **class law + residual SSOT**, not a second copy of CLI lifecycle, checksum, output, or storage tables (those stay on peer shell requirements).
+
+### 1.1 Human-facing
+
+**In one sentence:** This file says ruoyi is shippable software (a command you can install), and it holds leftover stack facts — language, tools, OS — that no other requirement already owns.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | A maintainer reading which language and tools this product uses | bash ship unit `./ruoyi`; tests via `./tests/run.sh` |
+| The other role | Peer requirement files that already own install, help, checksum, output | `requirement-shell-cli-interface`, `requirement-shell-automatic-checksum` |
+| Not this file | A second copy of the command table, dest-approval machine, or checksum law | No dest approver; no dest fence queue |
+
+| Includes | Excludes |
+|----------|----------|
+| Primary language, toolchain policy, test runner, OS family | Full command catalog, checksum algorithm, `out_*` catalog |
+| Honest “considered — none” for dest approver / dest fences | Inventing a dedicated approver account so the set looks complete |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | live identity (`APP_NAME`, `VERSION`) |
+| `docs/requirements/index.md` | registry | live product-law inventory |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Confirm class | You are looking at a software product, not an empty seed template. | Read this file’s Implementation Notes table |
+| Run tests | The declared runner is the POSIX suite next to the ship unit. | `./tests/run.sh` |
 
 ---
 
@@ -84,7 +109,9 @@ This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycl
 | **Architectures supported** | any arch with a POSIX sh and the external tools the script invokes (no arch-specific binary) |
 | **Git surface** | used for product publish (`github.com/cloudgen/ruoyi`) |
 | **Ship unit / install** | yes — repo root `./ruoyi` + companion `ruoyi.sha256`; Type 0 online install (peer shell REQs) |
-| **Product version SSOT** | `VERSION="2.3.1"` hard-assign in `./ruoyi` |
+| **Product version SSOT** | `VERSION="2.3.2"` hard-assign in `./ruoyi` |
+| **Actor / role / subject / approver** | **considered — no dest approver** (Type 0 CLI + internal Type 1 domain elev only; no dest approval machine) |
+| **Dest fence conditions** | **considered — no dest fence conditions** (no dest inbound approve/reject queue) |
 
 **Residual ownership table:**
 
@@ -102,7 +129,10 @@ This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycl
 | Idempotency / re-run safety | `requirement-shell-idempotency` | Do not duplicate |
 | Interactive vs non-interactive | `requirement-shell-interactive-vs-noninteractive` | Do not duplicate |
 | Modular prefixes / single-file layout | `requirement-shell-modular-function-design` | Do not duplicate |
-| Domain features / help / about extras | *none* (bootstrap — no domain SSOT) | Add `requirement-domain-*` only when domain ops exist |
+| Shell coding style | `requirement-shell-script-coding` | Language-matched coding-style REQ; do not treat skills/molds as product law |
+| Domain features / help / about extras | `requirement-domain-ruoyi` | Four pillars; Area `domain` |
+| Actor / role / subject / approver | **this file** (residual) | Considered; no dest approver — do not invent `requirement-actor-role-subject-approver` |
+| Dest fence conditions | **this file** (residual) | Considered; no dest fences — do not invent dest-fence REQs |
 
 ---
 
@@ -168,6 +198,9 @@ This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycl
 | `requirement-shell-idempotency` | Re-run safety |
 | `requirement-shell-interactive-vs-noninteractive` | Mode policy |
 | `requirement-shell-modular-function-design` | Prefixes / single-file modularity |
+| `requirement-shell-script-coding` | Language-matched coding-style REQ |
+| `requirement-domain-ruoyi` | Domain four pillars (Area `domain`) |
+| `requirement-bootstrap-chain` | A→B hop table |
 | `docs/requirements/index.md` | Registry SSOT |
 
 ---
@@ -177,10 +210,13 @@ This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycl
 | Date | Status | Note |
 |------|--------|------|
 | 2026-07-19 | Active | Specialized class law for ruoyi (review fix F1) |
+| 2026-08-19 | Active | Housekeeping: residual dest-approver / dest-fence **none**; domain owner pointer |
+| 2026-08-24 | Active | Housekeeping: residual points at `requirement-shell-script-coding` (coding-style REQ) |
+| 2026-09-06 | Active | Human-facing §1.1; version SSOT 2.3.2 |
 
 ---
 
-**Last Updated**: 2026-07-19  
+**Last Updated**: 2026-09-06  
 **Owner**: ruoyi project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; CIAO Principles 1, 2, 4, 5, 20, 21 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).
 

@@ -10,6 +10,32 @@ This requirement is the **Domain SSOT** for product **ruoyi** (B): one-command s
 
 **Direction:** A (`selfmanaged`) → B (`ruoyi`) only. Domain law lives **only** on B. Do not reverse-copy domain onto A.
 
+### 1.1 Human-facing
+
+**In one sentence:** After the `ruoyi` command is on your PATH, you use `setup`, `mariadb`, `redis`, `run`, and `db-extract` to clone and run a RuoYi admin demo on this machine.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Operator who already has the `ruoyi` command | `ruoyi setup --no-run` then `ruoyi run` |
+| The other role | Host package/database steps may call `sudo` for MariaDB/Redis only | `ruoyi mariadb` |
+| Not this file | Installing the `ruoyi` command itself (`curl \| bash` with no extra word) | `requirement-shell-cli-zero-arguments` |
+
+| Includes | Excludes |
+|----------|----------|
+| Domain verbs, Java/Maven pins, help/about extras, project folder | Empty-argv install of the CLI binary |
+| Internal `sudo` for DB/Redis packages | Forcing the whole CLI under `sudo` for daily work |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | live domain handlers |
+| `ruoyi help` | command | listed domain verbs |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Prepare stack | SDKMAN, Java 21, Maven, clone. Does not start the app when `--no-run`. | `ruoyi setup --no-run` |
+| Start app | Build and run `ruoyi-admin`. | `ruoyi run` |
+| Database | May elevate for packages/services only. | `ruoyi mariadb` |
+
 **Out of scope (peer shell REQs own):** ship-unit install/self-update/self-uninstall detail; empty-argv Type O install-ensure for the CLI binary; automatic companion checksum; `out_*` catalog; modular Type 0 prefixes.
 
 ### Identity SSOT (this product — live ship unit `./ruoyi`)
@@ -17,7 +43,7 @@ This requirement is the **Domain SSOT** for product **ruoyi** (B): one-command s
 | Field | Live value |
 |-------|------------|
 | **APP_NAME** | `ruoyi` |
-| **VERSION** | `2.3.1` |
+| **VERSION** | `2.3.2` |
 | **REPO_USER** / **REPO_NAME** | `cloudgen` / `ruoyi` |
 | **SCRIPT_URL** | `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi` |
 | **Shebang / runtime** | `#!/bin/bash` (SDKMAN/Java domain requires bash; re-exec when needed) |

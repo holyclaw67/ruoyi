@@ -4,7 +4,31 @@
 
 ## 1. Purpose
 
-This requirement is the **project Single Source of Truth** for **shell CLI storage resolution** of the ruoyi POSIX `/bin/sh` Type 0 bootstrap CLI: volatile scratch and app-scoped cache path selection, per-user isolation, central resolver ownership, `app_main` wire, and about diagnostics.
+This requirement is the **project Single Source of Truth** for **shell CLI storage resolution** of the ruoyi POSIX `/bin/sh` CLI: volatile scratch and app-scoped cache path selection, per-user isolation, central resolver ownership, `app_main` wire, and about diagnostics.
+
+### 1.1 Human-facing
+
+**In one sentence:** Scratch files for ruoyi go in a per-user folder (RAM disk first, then `/tmp`, then cache), not a shared dump for everyone on the machine.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Your scratch is named with `ruoyi` and your username | `/dev/shm/ruoyi-alice` |
+| The other role | The Java project folder (`PROJECT_DIR`) | Not this resolver |
+| Not this file | Install bin paths (`~/.local/bin`) | `requirement-shell-path-and-shell-support` |
+
+| Includes | Excludes |
+|----------|----------|
+| One resolver `util_resolve_storage`; `about` shows effective storage | Hard-coded `/tmp/ruoyi` dumps in new code |
+| Isolation by app name + username | World-writable shared scratch for all users |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | `util_resolve_storage` + `app_main` wire |
+| `ruoyi about --json` | command | `effective_storage` and `storage_dir` fields |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Inspect scratch | JSON about reports the resolved folder. | `ruoyi about --json` |
 
 **Scope:** Resolve priority chain; isolation; `util_resolve_storage` contract; `EFFECTIVE_STORAGE_DIR` / `TMPDIR` export; about human + JSON fields.  
 **Out of scope (cited, not re-owned):** Binary install paths (`USER_BIN` / `GLOBAL_BIN`); domain project trees (none on this bootstrap product); companion checksum; PATH shell-rc.
@@ -55,7 +79,7 @@ First match that is available and writable:
 | **Config fallback** | `: "${STORAGE_DIR:=${XDG_CACHE_HOME}/${APP_NAME}-${USERNAME}}"` |
 | **Call sites** | `app_main` (resolve + TMPDIR); `app_about` (human + JSON) |
 | **Not used for** | Domain project trees (bootstrap has none) |
-| **Tests** | `tests/test_cli.sh` — about storage fields, isolation, dir exists, STORAGE_DIR override on fallback field |
+| **Tests** | `tests/test_cli.sh` — TP-CLI-11 about JSON `effective_storage` / `storage_dir` |
 
 ### 2.6 Why This Requirement Exists (CIAO)
 
@@ -100,7 +124,7 @@ Storage resolve work for ruoyi is **not done** if any of the following fail:
 4. `app_main` sets `EFFECTIVE_STORAGE_DIR` / exports `TMPDIR` from the resolver once early.  
 5. `app_about` human + JSON expose effective storage fields and **omit** `CHECKSUM`.  
 6. User-visible storage failures use Output SSOT (`out_die` / structured error).  
-7. Tests cover about storage fields / isolation / override as designed (`tests/test_cli.sh`).  
+7. Tests cover about storage fields (`tests/test_cli.sh` TP-CLI-11).  
 8. Implementation changes cite this requirement key `requirement-shell-cli-storage`.
 
 ---
@@ -114,7 +138,16 @@ Storage resolve work for ruoyi is **not done** if any of the following fail:
 | `docs/requirements/requirement-shell-output-requirements.md` | about JSON via `out_json` |
 | `docs/requirements/requirement-shell-self-management.md` | about lifecycle |
 | `./ruoyi` | Implementation under test |
-| `tests/test_cli.sh` | Storage diagnostics tests |
+| `tests/test_cli.sh` | Storage diagnostics tests (TP-CLI-11) |
+
+## Design-time verification
+
+| TP family / ID | Suite | Status |
+|----------------|-------|--------|
+| **TP-CLI-11** | `tests/test_cli.sh` | have |
+
+**Matrix:** `docs/reviews/requirement-test-matrix.md`  
+**Map:** `docs/reviews/test-plan.md`.
 
 ---
 

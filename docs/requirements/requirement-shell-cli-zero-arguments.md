@@ -4,7 +4,32 @@
 
 ## 1. Purpose
 
-This requirement is the **project Single Source of Truth** for **zero-argument (empty argv) dispatcher behavior** of the ruoyi POSIX `/bin/sh` Type 0 CLI.
+This requirement is the **project Single Source of Truth** for **zero-argument (empty argv) dispatcher behavior** of the ruoyi POSIX `/bin/sh` CLI.
+
+### 1.1 Human-facing
+
+**In one sentence:** Running `ruoyi` with no arguments only installs or re-checks the `ruoyi` command itself; it does not clone RuoYi or start the admin app.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Anyone pasting the one-liner or typing `ruoyi` with no words | `curl …/ruoyi \| bash` |
+| The other role | Domain stack (`setup` / `run`) | Must be typed explicitly |
+| Not this file | Checksum sidecar, full command catalog | Peer shell requirements |
+
+| Includes | Excludes |
+|----------|----------|
+| Empty argv = install-ensure of the CLI binary | Empty argv = help |
+| Already installed → success no-op (not a blind reinstall) | Combined CLI+domain payload on empty argv |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | `app_main` empty-argv branch |
+| README Quick Installation | product docs | one-liners |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| First install | No extra command; only the CLI is placed. | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| bash` |
+| Prepare RuoYi | Separate explicit domain command. | `ruoyi setup --no-run` |
 
 ### 1.0 Product type (template dual-model)
 
@@ -241,7 +266,7 @@ This requirement is satisfied when all of the following hold:
 | **Not Type O-P** | Domain stack (`setup` / SDKMAN / project) is **not** part of empty-argv ensure |
 | **Peer online install law** | `requirement-shell-online-install.md` |
 | **Domain law** | `requirement-domain-ruoyi.md` |
-| **VERSION** | `2.3.1` |
+| **VERSION** | `2.3.2` |
 
 ### P1 mold-depth: Type O-S case matrix (ruoyi)
 
@@ -285,7 +310,7 @@ This requirement is satisfied when all of the following hold:
 1. Case A failure path non-zero.  
 2. Case B or C re-run is not help.  
 3. Peers: `requirement-shell-online-install.md`, `requirement-domain-ruoyi.md` for domain verbs.  
-4. `VERSION` / product identity: `ruoyi` `2.3.1`.
+4. `VERSION` / product identity: `ruoyi` `2.3.2`.
 
 ## Design-time verification (product)
 

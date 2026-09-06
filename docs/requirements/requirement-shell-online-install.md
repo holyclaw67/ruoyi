@@ -6,7 +6,32 @@
 
 ## 1. Purpose
 
-Single Source of Truth for **online one-liner install** of the **ruoyi CLI ship unit**: pipe-safe bootstrap, channel Config composition, atomic place, integrity, user vs system paths, post-install UX, and alignment with **Type O-S** empty-argv install-ensure.
+Single Source of Truth for **online one-liner install** of the **ruoyi CLI ship unit**: pipe-safe bootstrap, channel Config composition, atomic place, integrity, user vs system paths, post-install UX, and alignment with empty-argv install-ensure of the CLI command only.
+
+### 1.1 Human-facing
+
+**In one sentence:** You install ruoyi with a copy-paste `curl | bash` line; that places the command in `~/.local/bin` (or `/usr/local/bin` as root).
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Newcomer installing the command | User one-liner without `sudo` |
+| The other role | Root / system-wide place | `sudo bash` one-liner |
+| Not this file | Cloning RuoYi / starting the admin app | `ruoyi setup` / `ruoyi run` |
+
+| Includes | Excludes |
+|----------|----------|
+| Literal channel URL one-liners; user vs global paths | Empty-argv also ensuring the Java stack |
+| Pipe-safe `app_main "$@"` (no `$0` basename gate) | Dual local-checkout install class |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| README Quick Installation | product docs | copy-paste one-liners |
+| `./ruoyi` | ship unit | `SCRIPT_URL` default |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| User install | Command lands in `~/.local/bin/ruoyi`. | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| bash` |
+| System-wide | Command lands in `/usr/local/bin/ruoyi`. | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| sudo bash` |
 
 **Product class:** **Type O-S** (script-alone). Domain stack ensure is **not** part of empty-argv — see `requirement-domain-ruoyi.md` and `requirement-shell-cli-zero-arguments.md`.  
 **Not Type O-P:** do not use `template-payload-online-install` as this product’s empty-argv law unless product class is intentionally reclassified.
@@ -29,7 +54,7 @@ Single Source of Truth for **online one-liner install** of the **ruoyi CLI ship 
 | Field | Value |
 |-------|--------|
 | **APP_NAME** | `ruoyi` |
-| **VERSION** | `2.3.1` |
+| **VERSION** | `2.3.2` |
 | **REPO_USER** / **REPO_NAME** | `cloudgen` / `ruoyi` |
 | **SCRIPT_URL** | `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi` |
 | **One-liner (user)** | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| bash` |
@@ -53,7 +78,7 @@ Root one-liner / elevated install → `${GLOBAL_BIN}/ruoyi` (default `/usr/local
 | Variable | Family | Role | Live default |
 |----------|--------|------|--------------|
 | `APP_NAME` | identity | Binary / raw file segment | hard-assign `ruoyi` + `: "${APP_NAME:=ruoyi}"` |
-| `VERSION` | identity | Local version SSOT | hard-assign `2.3.1` |
+| `VERSION` | identity | Local version SSOT | hard-assign `2.3.2` |
 | `REPO_USER` | channel | Git owner | `cloudgen` |
 | `REPO_NAME` | channel | Git repo | `ruoyi` |
 | `SCRIPT_URL` | channel | Full install channel URL | composed from REPO_* + APP_NAME; env override allowed |

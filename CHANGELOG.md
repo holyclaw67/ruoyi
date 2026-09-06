@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2] - 2026-09-06
+
+### Added
+- Human-facing section on every registered requirement (plain who / what / command)
+- `ruoyi about` JSON and human diagnostics for CLI scratch storage (`effective_storage`, `storage_dir`)
+- TP-CLI-11 about storage fields; help coverage for `mysql` / `db` aliases
+- Coverage review `docs/reviews/2026-09-06-readme-requirements-coverage.md`
+
+### Changed
+- Product README: identity H1, required section order, plain-language description, integrity transparency (companion **link** / **value** / **result**)
+- Version **2.3.2** aligned across ship unit, README badge, CHANGELOG, SECURITY, requirement Implementation Notes
+
+### Fixed
+- Domain `about` omitted CLI scratch storage fields required by `requirement-shell-cli-storage`
+
+### Security
+- SECURITY.md supported version table and last-updated date aligned to 2.3.2
+
+---
+
 ## [2.3.1] - 2026-08-11
 
 ### Added

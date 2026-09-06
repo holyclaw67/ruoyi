@@ -4,7 +4,32 @@
 
 ## 1. Purpose
 
-This requirement is the **project Single Source of Truth** for **CLI self-management** of the ruoyi POSIX shell tool: inspecting, upgrading, and removing its own installed binary (and related install artifacts) safely—especially for tools installed via one-command online install (`curl | bash`); install-mode package is **online Type O-S** (see `requirement-shell-online-install.md`) — not concurrent local-self-managed dual mode—without requiring a separate package-manager workflow for routine updates.
+This requirement is the **project Single Source of Truth** for **CLI self-management** of the ruoyi POSIX shell tool: inspecting, upgrading, and removing its own installed binary (and related install artifacts) safely—especially for tools installed via one-command online install (`curl | bash`); install-mode package is **online script-alone** (see `requirement-shell-online-install.md`) — not concurrent local-self-managed dual mode—without requiring a separate package-manager workflow for routine updates.
+
+### 1.1 Human-facing
+
+**In one sentence:** After install, you check for a newer ruoyi, update it, or remove it with `version-check`, `self-update`, and `self-uninstall`.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Anyone with the command installed | `ruoyi version-check` |
+| The other role | Online channel (`SCRIPT_URL`) | `self-update` fetches from that URL |
+| Not this file | Domain `setup` / `run` | Those do not replace `self-update` |
+
+| Includes | Excludes |
+|----------|----------|
+| `version-check`, `self-update`, `self-uninstall`, `about` | OS package-manager workflows |
+| Confirm before uninstall on a terminal unless `--force` | Bare `uninstall` as the online remove verb |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | lifecycle handlers |
+| `ruoyi about` | command | install + stack diagnostics |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Check channel | Compare local version to remote. | `ruoyi version-check` |
+| Remove | Terminal may confirm; scripts need `--force`. | `ruoyi --force self-uninstall` |
 
 It defines lifecycle capabilities and safety rules for this shell project’s self-management commands.
 
@@ -112,7 +137,7 @@ Root may write global install path; non-root uses user path. Do not assume root 
 | **Uninstall steps** | `inst_self_uninstall_determine_bin` → `inst_self_uninstall_confirm_and_remove` → `inst_self_uninstall_cleanup_path` |
 | **PATH ensure** | `path_add_shell` / bash / zsh / fish helpers on user install |
 | **Privilege** | Type 0 only for self-management surface; no dedicated system user |
-| **Version SSOT** | `VERSION` hard-assign `2.3.1` in script config block |
+| **Version SSOT** | `VERSION` hard-assign `2.3.2` in script config block |
 
 #### Normative acceptance behaviors (this project)
 

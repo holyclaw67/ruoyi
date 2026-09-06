@@ -6,9 +6,35 @@
 
 ## 1. Purpose
 
-SSOT for **shell coding style** of ship unit `./ruoyi` (bash shebang for SDKMAN domain; Type 0 core remains POSIX-style defensive patterns inherited from selfmanaged).
+SSOT for **shell coding style** of ship unit `./ruoyi` (bash shebang for SDKMAN domain; lifecycle core remains POSIX-style defensive patterns inherited from selfmanaged).
 
-**Alias note:** mold `template-sh-coding-style` is findability-only; this specialized file is product law (not a second body of the mold alias).
+**Intention:** without this file, portable learned lessons arrive **raw** (agents would treat coding skills as product law). This file is the specialize-in home; peer requirements still own output, prefixes, TTY, and temps — this file **points**, it does not duplicate those bodies.
+
+**Alias note:** a portable coding-style alias is findability-only; this specialized file is product law (not a second body of that alias).
+
+### 1.1 Human-facing
+
+**In one sentence:** Maintainers write the ruoyi script in a shared style (named prefixes, no global `set -e`, fail with `out_die`) so later edits do not arrive as a random mix of habits.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Maintainer changing `./ruoyi` | `bash -n ./ruoyi`; `set -u` with `HOME` unset still works |
+| The other role | Peer files that already own output / prefixes / TTY | Point; do not copy the full tables here |
+| Not this file | User-facing command names | `requirement-shell-cli-interface` |
+
+| Includes | Excludes |
+|----------|----------|
+| Shebang, `set -u`, prefix names, `out_die` instead of global `set -e` | Treating a coding skill as product law |
+| Specialize-in home for later portable lessons | Second copy of the full `out_*` catalog |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | style under test |
+| `./tests/run.sh` | suite | TP-CLI-01 syntax, TP-CLI-08 `HOME` unset |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Syntax check | The file must parse as bash. | `bash -n ./ruoyi` |
 
 ## 2. Core rules
 

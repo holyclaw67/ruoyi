@@ -3,9 +3,10 @@
 # =============================================================================
 # Covers: bash -n, companion digest, version/help/about (human+JSON),
 # domain verbs in help, CHECKSUM absent, unknown command, quiet, env -u HOME,
-# zero-arg install failure exit, self-uninstall fail-closed JSON.
+# zero-arg install failure exit, self-uninstall fail-closed JSON,
+# about storage JSON (TP-CLI-11).
 # Primary REQs: requirement-shell-cli-interface, online-install, zero-arguments,
-# output-requirements, domain-ruoyi (help pillars)
+# output-requirements, domain-ruoyi (help pillars), cli-storage
 # =============================================================================
 
 . "${TESTS_ROOT}/helpers.sh"
@@ -56,6 +57,8 @@ run_test_cli() {
     assert_contains "TP-CLI-04 help about" "$_out" "about"
     assert_contains "TP-CLI-04 help setup" "$_out" "setup"
     assert_contains "TP-CLI-04 help mariadb" "$_out" "mariadb"
+    assert_contains "TP-CLI-04 help mysql" "$_out" "mysql"
+    assert_contains "TP-CLI-04 help db alias" "$_out" "mariadb|mysql|db"
     assert_contains "TP-CLI-04 help redis" "$_out" "redis"
     assert_contains "TP-CLI-04 help run" "$_out" "run"
     assert_contains "TP-CLI-04 help db-extract" "$_out" "db-extract"
@@ -85,6 +88,8 @@ run_test_cli() {
     assert_contains "TP-CLI-05 about --json installed" "$_out" '"installed"'
     assert_contains "TP-CLI-05 about --json project_dir" "$_out" '"project_dir"'
     assert_not_contains "TP-CLI-05 about --json no CHECKSUM" "$_out" "CHECKSUM"
+    assert_contains "TP-CLI-11 about --json effective_storage" "$_out" '"effective_storage"'
+    assert_contains "TP-CLI-11 about --json storage_dir" "$_out" '"storage_dir"'
 
     # --- unknown command ---
     _err=$(bash "${SCRIPT}" no-such-command 2>&1 >/dev/null)

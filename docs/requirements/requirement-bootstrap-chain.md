@@ -8,6 +8,31 @@
 
 Declare the **bootstrap specialization chain** for this product so agents preserve **A → B only** direction, architecture inheritance, and channel separation.
 
+### 1.1 Human-facing
+
+**In one sentence:** ruoyi grew from the selfmanaged command; keep that direction — do not copy ruoyi back onto selfmanaged.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | A maintainer changing the ruoyi script or its law | Edit `./ruoyi`, not `./selfmanaged`, for product B work |
+| The other role | Bootstrap origin A (`selfmanaged`) — architecture source only | Shared output/install/dispatcher patterns |
+| Not this file | Domain verbs (setup, mariadb, run) | Those live on `requirement-domain-ruoyi` |
+
+| Includes | Excludes |
+|----------|----------|
+| Hop table selfmanaged → ruoyi | Reverse-copy of ruoyi onto the bootstrap binary |
+| Channel owner `cloudgen/ruoyi` on the leaf | Treating selfmanaged’s GitHub URL as this product’s install channel |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | product ship unit (B) | live specialized CLI |
+| `./selfmanaged` | bootstrap reference (A), when present | architecture source — do not overwrite |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Specialize B | Change ruoyi. Leave the bootstrap copy as reference. | Edit `./ruoyi` |
+| Restore direction | If A was overwritten by B, restore A then rebuild B. | Restore `./selfmanaged` from archive, then re-apply domain on `./ruoyi` |
+
 ## 2. Core rules
 
 1. Every edge **MUST** be ancestor → descendant only.  
@@ -27,7 +52,7 @@ Declare the **bootstrap specialization chain** for this product so agents preser
 
 | Edge | Inherit contracts | Retarget identity/channel | Domain extend |
 |------|-------------------|---------------------------|---------------|
-| selfmanaged → ruoyi | yes (`out_*`, `inst_*`, `app_main`, Type O-S empty argv, companion integrity, modular prefixes) | yes (`APP_NAME=ruoyi`, REPO/SCRIPT_URL, VERSION=2.3.1) | yes (`ruo_*`/`db_*`/`setup_*`) |
+| selfmanaged → ruoyi | yes (`out_*`, `inst_*`, `app_main`, Type O-S empty argv, companion integrity, modular prefixes) | yes (`APP_NAME=ruoyi`, REPO/SCRIPT_URL, VERSION=2.3.2) | yes (`ruo_*`/`db_*`/`setup_*`) |
 
 ### Origin-review defaults
 

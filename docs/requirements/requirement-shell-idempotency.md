@@ -6,6 +6,30 @@
 
 This requirement is the **project Single Source of Truth** for **idempotency (re-run safety)** of state-changing operations in the **POSIX shell CLI** for ruoyi.
 
+### 1.1 Human-facing
+
+**In one sentence:** You can run install and setup again; if the work is already done, ruoyi skips the unsafe part instead of destroying a good install.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Operator re-running `ruoyi install` or `ruoyi setup --no-run` | Second install prints already-installed |
+| The other role | `--force` when you **mean** to replace | Explicit, not the default |
+| Not this file | Empty-argv case matrix | `requirement-shell-cli-zero-arguments` |
+
+| Includes | Excludes |
+|----------|----------|
+| Detect → skip when desired state holds | Blind reinstall on every empty argv |
+| PATH / install re-entry | Read-only `version` as an “ensure” command |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | install skip / setup re-entry |
+| `ruoyi install` | command | already-installed no-op |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Re-install | Success no-op unless `--force`. | `ruoyi install` |
+
 It defines re-run safety for ensure-style shell lifecycle commands (install, PATH integration, self-update, self-uninstall, and related helpers). Read-only commands remain outside the “ensure-X” contract except where they must stay safe under repeat invocation.
 
 **Scope:** Detect → ensure → success-if-done semantics; force/reinstall overrides; partial-failure re-entry; PATH and shell-config re-entry; output behavior on no-op.  

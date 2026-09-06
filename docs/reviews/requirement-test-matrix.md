@@ -16,8 +16,8 @@
 | requirement-shell-error-handling | TP-CLI-06 | test_cli.sh |
 | requirement-shell-script-coding | TP-CLI-01, TP-CLI-08 | test_cli.sh |
 | requirement-shell-least-privilege | (docs + elev path) | optional TP-DOM-08 |
-| requirement-shell-path-and-shell-support | (install path side effect) | install lifecycle |
+| requirement-shell-path-and-shell-support | TP-INST-01 | test_install_lifecycle.sh |
 | requirement-shell-backup-strategy | (clone path) | TP-DOM-03/04 |
-| requirement-shell-cli-storage | (about/storage) | optional expand |
+| requirement-shell-cli-storage | TP-CLI-11 | test_cli.sh |
 | requirement-shell-interactive-vs-noninteractive | TP-CLI-09, lifecycle | test_cli.sh |
 | requirement-shell-modular-function-design | (structure) | bash -n / suite |

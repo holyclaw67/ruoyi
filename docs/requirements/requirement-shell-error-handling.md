@@ -10,6 +10,30 @@ SSOT for **defensive error handling** on `ruoyi`: fail loud for critical faults,
 
 **Complements** (does not replace): `requirement-shell-output-requirements.md` (channel catalog), interactive peer (prompt policy).
 
+### 1.1 Human-facing
+
+**In one sentence:** When ruoyi cannot continue, it prints a clear error and exits; it does not hang waiting for you in a script.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Operator or CI seeing a failure | Unknown command → pointer to `ruoyi help` |
+| The other role | Output family (`out_die` / `out_json_error`) | Channel rules live on the output requirement |
+| Not this file | Which commands exist | `requirement-shell-cli-interface` |
+
+| Includes | Excludes |
+|----------|----------|
+| Fail-fast for checksum mismatch, missing binary place, dangerous delete | Silent ignore of hard errors |
+| Actionable next step in the error | Raw `echo` of fatals |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./ruoyi` | ship unit | `out_die` call sites |
+| `ruoyi help` | command | recovery pointer |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Hit an unknown word | Non-zero exit; message names `help`. | `ruoyi no-such-command` |
+
 ## 2. Core error handling rules (mandatory)
 
 ### 2.1 Single source of error output

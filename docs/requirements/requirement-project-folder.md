@@ -6,7 +6,31 @@
 
 ## 1. Purpose
 
-SSOT for **folder ownership** of the ruoyi CLI (Type 1 tool folders) vs the **RuoYi application project** (Type 2 target folder under `PROJECT_DIR`).
+SSOT for **folder ownership** of the ruoyi CLI (the installed command and its scratch) vs the **RuoYi application project** (the Java tree under `PROJECT_DIR`).
+
+### 1.1 Human-facing
+
+**In one sentence:** The installed `ruoyi` command lives in your bin folder; the RuoYi Java project lives in a separate folder (default `~/ruoyi-demo`).
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Operator choosing where the Java demo lives | `ruoyi setup --no-run --project-dir /opt/ruoyi-demo` |
+| The other role | CLI install paths (`~/.local/bin/ruoyi` or `/usr/local/bin/ruoyi`) | Not the same folder as the Java project |
+| Not this file | Scratch/cache resolve for temp files | `requirement-shell-cli-storage` |
+
+| Includes | Excludes |
+|----------|----------|
+| `PROJECT_DIR` default and `--project-dir` | Treating the CLI binary path as the RuoYi clone |
+| Refuse `rm -rf` of `/` or `$HOME` as a project wipe | Install-path PATH integration |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `~/ruoyi-demo` | default project folder | cloned RuoYi tree |
+| `ruoyi about --json` | command | `project_dir` field |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Override folder | Clone/build uses that path, not `~/ruoyi-demo`. | `ruoyi setup --no-run --project-dir /opt/ruoyi-demo` |
 
 ## 2. Core rules
 

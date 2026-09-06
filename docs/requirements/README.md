@@ -5,7 +5,7 @@ Authoritative specialized product law for **ruoyi** lives here.
 **Workspace class:** software-development  
 **Bootstrap direction:** `selfmanaged` (A) → `ruoyi` (B) only  
 **Registry:** [`index.md`](./index.md) (live inventory)  
-**Updated:** 2026-08-11
+**Updated:** 2026-09-06
 
 ## Rules for agents
 
@@ -15,3 +15,4 @@ Authoritative specialized product law for **ruoyi** lives here.
 4. Domain catalog ownership is **`requirement-domain-ruoyi`** (Area `domain`).  
 5. Keep Status and Path in sync with each file’s header when status changes.  
 6. Do **not** reverse-copy domain law onto bootstrap A (`selfmanaged`).
+7. Every registered `requirement-*.md` includes **§1.1 Human-facing** (plain who / what / command).
