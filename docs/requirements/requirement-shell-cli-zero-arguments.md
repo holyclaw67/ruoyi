@@ -266,7 +266,7 @@ This requirement is satisfied when all of the following hold:
 | **Not Type O-P** | Domain stack (`setup` / SDKMAN / project) is **not** part of empty-argv ensure |
 | **Peer online install law** | `requirement-shell-online-install.md` |
 | **Domain law** | `requirement-domain-ruoyi.md` |
-| **VERSION** | `2.3.2` |
+| **VERSION** | `2.3.3` |
 
 ### P1 mold-depth: Type O-S case matrix (ruoyi)
 
@@ -310,7 +310,7 @@ This requirement is satisfied when all of the following hold:
 1. Case A failure path non-zero.  
 2. Case B or C re-run is not help.  
 3. Peers: `requirement-shell-online-install.md`, `requirement-domain-ruoyi.md` for domain verbs.  
-4. `VERSION` / product identity: `ruoyi` `2.3.2`.
+4. `VERSION` / product identity: `ruoyi` `2.3.3`.
 
 ## Design-time verification (product)
 

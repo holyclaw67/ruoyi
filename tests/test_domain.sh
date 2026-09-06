@@ -21,6 +21,7 @@ run_test_domain() {
     assert_contains "TP-DOM-01 help --project-dir" "$_out" "--project-dir"
     assert_contains "TP-DOM-01 help mariadb" "$_out" "mariadb"
     assert_contains "TP-DOM-01 help mysql" "$_out" "mysql"
+    assert_contains "TP-DOM-01 help db alias" "$_out" "mariadb|mysql|db"
     assert_contains "TP-DOM-01 help redis" "$_out" "redis"
     assert_contains "TP-DOM-01 help run" "$_out" "run"
     assert_contains "TP-DOM-01 help db-extract" "$_out" "db-extract"
@@ -72,6 +73,20 @@ run_test_domain() {
     )
     _ec=$?
     assert_eq "TP-DOM-04 second setup exit 0" 0 "$_ec"
+    _bak=
+    for _c in 1 2 3 4 5; do
+        _cand="${_proj}.$(date +%Y%m%d)-${_c}.bak"
+        if [ -d "${_cand}" ]; then
+            _bak="${_cand}"
+            break
+        fi
+    done
+    if [ -n "${_bak}" ]; then
+        assert_file_exists "TP-DOM-04 dated backup of project" "${_bak}"
+        assert_file_exists "TP-DOM-04 backup kept USER_MARK" "${_bak}/USER_MARK.txt"
+    else
+        t_fail "TP-DOM-04 expected dated project backup next to ${_proj}"
+    fi
 
     # run routes (stub java/mvn — may fail build; must not be unknown command)
     _out=$(
@@ -100,6 +115,24 @@ run_test_domain() {
     else
         t_pass "TP-DOM-06 db-extract routed (exit=${_ec})"
     fi
+
+    printf '%s\n' '#!/bin/sh' 'exit 1' > "${CI_STUB_BIN}/sudo"
+    printf '%s\n' '#!/bin/sh' 'exit 1' > "${CI_STUB_BIN}/apt-get"
+    chmod +x "${CI_STUB_BIN}/sudo" "${CI_STUB_BIN}/apt-get"
+    for _verb in mysql db redis; do
+        _out=$(
+            HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" \
+            PATH="${CI_STUB_BIN}:${PATH}" PROJECT_DIR="${_proj}" \
+            bash "${SCRIPT}" "${_verb}" 2>"${_errf}"
+        )
+        _ec=$?
+        _err=$(cat "${_errf}" 2>/dev/null || true)
+        if printf '%s' "${_out}${_err}" | grep -qi 'Unknown command'; then
+            t_fail "TP-DOM-09 ${_verb} unknown command (help↔dispatcher)"
+        else
+            t_pass "TP-DOM-09 ${_verb} routed (exit=${_ec})"
+        fi
+    done
 
     # empty argv still Type O-S (CLI only) when installed — not domain
     _out=$(

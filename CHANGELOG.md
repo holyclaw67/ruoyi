@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.3] - 2026-09-06
+
+### Added
+- JSON `help` lists the `db` alias next to `mariadb`/`mysql`
+- Human help documents `--project` as an alias of `--project-dir`
+- TP-CLI-12..14 (`-q`, `--debug` JSON purity, `--project-dir` on `about`)
+- TP-INST-11 empty-argv Case A success
+- TP-DOM-04 dated backup assert; TP-DOM-09 `mysql`/`db`/`redis` routing
+
+### Fixed
+- JSON help catalog omitted `db` while the dispatcher and human help included it
+
+---
+
 ## [2.3.2] - 2026-09-06
 
 ### Added

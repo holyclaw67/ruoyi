@@ -136,6 +136,16 @@ run_test_install_lifecycle() {
     assert_eq "TP-INST-10 self-uninstall --force exit 0" 0 "$_ec"
     assert_file_missing "TP-INST-10 binary removed" "${_sm_bin}"
 
+    # --- empty-argv Case A success (not installed + working channel) ---
+    _out=$(
+        HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" SCRIPT_URL="${CI_SCRIPT_URL}" \
+        bash "${SCRIPT}" </dev/null 2>"${_errf}"
+    )
+    _ec=$?
+    assert_eq "TP-INST-11 zero-arg Case A exit 0" 0 "$_ec"
+    assert_file_exists "TP-INST-11 Case A binary exists" "${_sm_bin}"
+    assert_not_contains "TP-INST-11 Case A not help dump" "$_out" "RuoYi domain commands"
+
     ci_stop_channel
     ci_cleanup_env
 }

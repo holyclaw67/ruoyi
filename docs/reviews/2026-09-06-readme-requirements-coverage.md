@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-06  
 **Mode:** full product (docs + law + suite)  
-**Status:** closed for this pass (optional host residuals remain)
+**Status:** closed for this pass (optional host residuals remain). Follow-up **2.3.3** closed JSON `db` catalog drift, Case A success, backup assert, and `mysql`/`db`/`redis` routing.
 
 ## Summary
 

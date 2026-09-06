@@ -107,7 +107,7 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | **Primary executable** | Repo root `./ruoyi` (`#!/bin/bash`, single-file for `curl \| bash`; re-exec into bash when needed) |
 | **Dispatcher** | `app_main` (always invoked at end of script: `app_main "$@"` — no `${0##*/}` / APP_NAME basename gate; required for `curl \| sh`) |
 | **Output SSOT** | `out_text` + wrappers (`out_info`, `out_success`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_json`, …) |
-| **Version SSOT** | `VERSION` hard-assign `2.3.2` (script header / config block) |
+| **Version SSOT** | `VERSION` hard-assign `2.3.3` (script header / config block) |
 | **Install paths** | Global: `GLOBAL_BIN` default `/usr/local/bin`; User: `USER_BIN` default `${HOME}/.local/bin` |
 | **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `cloudgen` / `ruoyi`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
 | **Type 1 / Type 2 surface** | Domain may escalate with **internal `sudo`** for package/DB ops (`mariadb`/`mysql`/`redis`); default CLI lifecycle remains Type 0. Domain catalog: `requirement-domain-ruoyi.md` |
@@ -142,6 +142,7 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | `--debug` | Set `DEBUG=1` in `app_main` |
 | `--force` | `FORCE=1` and `FORCE_REINSTALL=1`; install reinstall / self-update / uninstall confirm skip |
 | `--project-dir PATH` | Set `PROJECT_DIR` for domain ops |
+| `--project PATH` | Alias of `--project-dir` (same handler) |
 | `--no-run` | With `setup`: skip `ruo_build_run` after clone |
 
 #### Dispatcher acceptance criteria (this project)

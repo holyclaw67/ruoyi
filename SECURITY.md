@@ -14,7 +14,7 @@ We currently provide security updates for the latest released version only.
 
 | Version | Supported |
 |---------|-----------|
-| 2.3.2 (current) | Yes |
+| 2.3.3 (current) | Yes |
 | Older releases | Please upgrade with `ruoyi self-update` |
 
 If you are running an older version, we strongly recommend upgrading to the latest release using:

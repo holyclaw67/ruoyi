@@ -54,7 +54,7 @@ Single Source of Truth for **online one-liner install** of the **ruoyi CLI ship 
 | Field | Value |
 |-------|--------|
 | **APP_NAME** | `ruoyi` |
-| **VERSION** | `2.3.2` |
+| **VERSION** | `2.3.3` |
 | **REPO_USER** / **REPO_NAME** | `cloudgen` / `ruoyi` |
 | **SCRIPT_URL** | `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi` |
 | **One-liner (user)** | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| bash` |
@@ -78,7 +78,7 @@ Root one-liner / elevated install → `${GLOBAL_BIN}/ruoyi` (default `/usr/local
 | Variable | Family | Role | Live default |
 |----------|--------|------|--------------|
 | `APP_NAME` | identity | Binary / raw file segment | hard-assign `ruoyi` + `: "${APP_NAME:=ruoyi}"` |
-| `VERSION` | identity | Local version SSOT | hard-assign `2.3.2` |
+| `VERSION` | identity | Local version SSOT | hard-assign `2.3.3` |
 | `REPO_USER` | channel | Git owner | `cloudgen` |
 | `REPO_NAME` | channel | Git repo | `ruoyi` |
 | `SCRIPT_URL` | channel | Full install channel URL | composed from REPO_* + APP_NAME; env override allowed |

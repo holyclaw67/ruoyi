@@ -65,6 +65,7 @@ run_test_cli() {
     assert_contains "TP-CLI-04 help --json" "$_out" "--json"
     assert_contains "TP-CLI-04 help --force" "$_out" "--force"
     assert_contains "TP-CLI-04 help --project-dir" "$_out" "--project-dir"
+    assert_contains "TP-CLI-04 help --project alias" "$_out" "--project PATH"
     assert_contains "TP-CLI-04 help --no-run" "$_out" "--no-run"
     assert_contains "TP-CLI-04 help REPO_USER" "$_out" "REPO_USER"
     assert_contains "TP-CLI-04 help SCRIPT_URL" "$_out" "SCRIPT_URL"
@@ -77,6 +78,7 @@ run_test_cli() {
     assert_contains "TP-CLI-04 help --json type help" "$_out" '"type":"help"'
     assert_contains "TP-CLI-04 help --json commands field" "$_out" "setup"
     assert_contains "TP-CLI-04 help --json app" "$_out" '"app":"ruoyi"'
+    assert_contains "TP-CLI-04 help --json commands include db" "$_out" "mysql,db,redis"
 
     # --- about (json): domain diagnostics; no CHECKSUM ---
     _out=$(bash "${SCRIPT}" --json about 2>/dev/null)
@@ -87,6 +89,10 @@ run_test_cli() {
     assert_contains "TP-CLI-05 about --json version" "$_out" "\"version\":\"${PRODUCT_VERSION}\""
     assert_contains "TP-CLI-05 about --json installed" "$_out" '"installed"'
     assert_contains "TP-CLI-05 about --json project_dir" "$_out" '"project_dir"'
+    assert_contains "TP-CLI-05 about --json sdkman" "$_out" '"sdkman"'
+    assert_contains "TP-CLI-05 about --json java" "$_out" '"java"'
+    assert_contains "TP-CLI-05 about --json maven" "$_out" '"maven"'
+    assert_contains "TP-CLI-05 about --json port" "$_out" '"port"'
     assert_not_contains "TP-CLI-05 about --json no CHECKSUM" "$_out" "CHECKSUM"
     assert_contains "TP-CLI-11 about --json effective_storage" "$_out" '"effective_storage"'
     assert_contains "TP-CLI-11 about --json storage_dir" "$_out" '"storage_dir"'
@@ -112,6 +118,26 @@ run_test_cli() {
     else
         t_fail "TP-CLI-07 version --quiet expected empty stdout, got '$(_trunc "$_out")'"
     fi
+
+    _out=$(bash "${SCRIPT}" -q version 2>/dev/null)
+    _ec=$?
+    assert_eq "TP-CLI-12 version -q exit 0" 0 "$_ec"
+    _trim=$(printf '%s' "$_out" | tr -d ' \t\n\r')
+    if [ -z "$_trim" ]; then
+        t_pass "TP-CLI-12 version -q suppresses human info"
+    else
+        t_fail "TP-CLI-12 version -q expected empty stdout, got '$(_trunc "$_out")'"
+    fi
+
+    _out=$(bash "${SCRIPT}" --debug --json version 2>/dev/null)
+    _ec=$?
+    assert_eq "TP-CLI-13 --debug --json version exit 0" 0 "$_ec"
+    assert_contains "TP-CLI-13 --debug --json version type" "$_out" '"type":"version"'
+
+    _out=$(bash "${SCRIPT}" --json about --project-dir /tmp/ruoyi-about-proj 2>/dev/null)
+    _ec=$?
+    assert_eq "TP-CLI-14 about --project-dir --json exit 0" 0 "$_ec"
+    assert_contains "TP-CLI-14 about project_dir override" "$_out" "/tmp/ruoyi-about-proj"
 
     # --- HOME unset under set -u ---
     _out=$(env -u HOME bash "${SCRIPT}" version 2>/dev/null)

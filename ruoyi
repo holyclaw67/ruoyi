@@ -74,8 +74,8 @@ APP_NAME="ruoyi"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX/bash Type 0 CLI + RuoYi domain: install, version-check, self-update, self-uninstall, about, mariadb, mysql, redis, run, db-extract.}"
 # Product version SSOT (semver). Extractors use: grep '^VERSION="'
-VERSION="2.3.2"
-: "${VERSION:=2.3.2}"
+VERSION="2.3.3"
+: "${VERSION:=2.3.3}"
 
 # Runtime flags (safe defaults)
 : "${QUIET:=0}"
@@ -4120,7 +4120,7 @@ ruo_about() {
     : "${PORT:=8080}"
     : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME:-ruoyi-demo}}"
     : "${APP_NAME:=ruoyi}"
-    : "${VERSION:=2.3.2}"
+    : "${VERSION:=2.3.3}"
     if [ -z "${EFFECTIVE_STORAGE_DIR:-}" ]; then
         EFFECTIVE_STORAGE_DIR=$(util_resolve_storage)
     fi
@@ -4265,7 +4265,7 @@ ruo_help() {
         out_json "help" "" \
             "app" "${APP_NAME}" \
             "version" "${VERSION}" \
-            "commands" "install,version,about,help,version-check,self-update,self-uninstall,setup,mariadb,mysql,redis,run,db-extract"
+            "commands" "install,version,about,help,version-check,self-update,self-uninstall,setup,mariadb,mysql,db,redis,run,db-extract"
         return 0
     fi
     out_info "${APP_NAME} — ${APP_DESC:-RuoYi one-command setup}"
@@ -4292,6 +4292,7 @@ ruo_help() {
     out_empty_line
     out_info "Global Options:"
     out_plain "  --project-dir PATH   Override PROJECT_DIR"
+    out_plain "  --project PATH       Alias of --project-dir"
     out_plain "  --no-run             With setup: skip run after clone"
     out_plain "  --quiet, -q          Suppress info/success"
     out_plain "  --json               Machine-readable JSON (implies --quiet)"

@@ -52,7 +52,7 @@ Declare the **bootstrap specialization chain** for this product so agents preser
 
 | Edge | Inherit contracts | Retarget identity/channel | Domain extend |
 |------|-------------------|---------------------------|---------------|
-| selfmanaged → ruoyi | yes (`out_*`, `inst_*`, `app_main`, Type O-S empty argv, companion integrity, modular prefixes) | yes (`APP_NAME=ruoyi`, REPO/SCRIPT_URL, VERSION=2.3.2) | yes (`ruo_*`/`db_*`/`setup_*`) |
+| selfmanaged → ruoyi | yes (`out_*`, `inst_*`, `app_main`, Type O-S empty argv, companion integrity, modular prefixes) | yes (`APP_NAME=ruoyi`, REPO/SCRIPT_URL, VERSION=2.3.3) | yes (`ruo_*`/`db_*`/`setup_*`) |
 
 ### Origin-review defaults
 

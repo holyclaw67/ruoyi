@@ -2,7 +2,7 @@
 
 **Product:** ruoyi (RuoYi admin framework one-command setup CLI)  
 **Workspace state:** Specialized software-development product (bootstrap A = selfmanaged; domain B = ruoyi).  
-**Updated:** 2026-09-06 (Human-facing §1.1 on every registered requirement; version 2.3.2)
+**Updated:** 2026-09-06 (Human-facing §1.1; version 2.3.3)
 
 | ID / key | Title | Area | Status | Path | Updated |
 |----------|-------|------|--------|------|---------|
