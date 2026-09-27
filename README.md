@@ -1,6 +1,6 @@
 # ruoyi - One-command setup for the RuoYi admin framework
 
-[![Version](https://img.shields.io/badge/Version-2.3.4-blue?style=flat-square)](https://github.com/cloudgen/ruoyi)
+[![Version](https://img.shields.io/badge/Version-2.3.5-blue?style=flat-square)](https://github.com/cloudgen/ruoyi)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE.md)
 [![CIAO](https://img.shields.io/badge/Philosophy-CIAO%20(Caution%20%E2%80%A2%20Intentional%20%E2%80%A2%20Anti--fragile%20%E2%80%A2%20Over--engineered)-purple.svg)](https://github.com/cloudgen/ciao)
 [![Stars](https://img.shields.io/github/stars/cloudgen/ruoyi?style=flat-square)](https://github.com/cloudgen/ruoyi)
@@ -47,13 +47,13 @@ Officially reviewed copy: [RECOMMENDATION.md](RECOMMENDATION.md).
 **User install** (recommended — your login only):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi | bash
+curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi | bash
 ```
 
 **System-wide:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi | sudo bash
+curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi | sudo bash
 ```
 
 Typical first run after the command is installed:
@@ -75,7 +75,7 @@ Online install and `self-update` verify the downloaded script with **SHA-256**. 
 | **Automatic companion** (default) | No `CHECKSUM` env pin | Fetch `${SCRIPT_URL}.sha256`. **Match** → install. **Mismatch** → abort. **Missing sidecar** → warn and continue (best-effort). |
 | **Strict pin** (secondary) | `CHECKSUM` set in the process environment | Compare to that digest; mismatch aborts. Not a `help`/`about` flag. |
 
-Same-channel companion digest proves **byte consistency** with the published sidecar, not independent signing. Repo companion file: `ruoyi.sha256`.
+Same-channel companion digest proves **byte consistency** with the published sidecar, not independent signing. Repo companion file: `src/ruoyi.sha256`.
 
 ## Usage
 
@@ -131,10 +131,10 @@ ruoyi about --json
 
 ## Contributing
 
-Issues and pull requests are welcome. Keep install truth, checksum outcomes, and command tables aligned with `ruoyi help` / `ruoyi about`. After editing `./ruoyi`, regenerate the companion digest and run the suite:
+Issues and pull requests are welcome. Keep install truth, checksum outcomes, and command tables aligned with `ruoyi help` / `ruoyi about`. After editing `src/ruoyi`, regenerate the companion digest and run the suite:
 
 ```bash
-sha256sum ruoyi | awk '{print $1"  ruoyi"}' > ruoyi.sha256
+sha256sum src/ruoyi | awk '{print $1"  ruoyi"}' > src/ruoyi.sha256
 ./tests/run.sh
 ```
 
@@ -148,4 +148,5 @@ Product law: [docs/requirements/index.md](docs/requirements/index.md). Test map:
 
 ## Last Update
 
+2026-09-27 (2.3.5 — ship unit and curl channel are `src/ruoyi`; companion `src/ruoyi.sha256`).
 2026-09-27 (2.3.4 — per-login per-process cache folder; persistence under `~/.local/ruoyi`).

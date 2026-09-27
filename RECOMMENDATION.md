@@ -52,7 +52,7 @@ The code is *anti-fragile* by design. It resists the common AI temptation to “
 **No critical or high-severity issues found.**
 
 **Low-severity / best-practice notes:**
-1. As with any `curl | bash` installer, paranoid users should clone the repo and run `./ruoyi` instead of piping from the internet.
+1. As with any `curl | bash` installer, paranoid users should clone the repo and run `src/ruoyi` instead of piping from the internet.
 2. After first run, **immediately change the default RuoYi admin / admin123 credentials** (standard advice for the framework itself).
 3. Database setup currently targets Ubuntu/Debian `apt` (Redis/MariaDB). Other distros require manual setup — clearly documented.
 4. The repository is new (0 stars as of release day) → monitor the first few weeks in production use.
@@ -74,12 +74,12 @@ The combination of CIAO principles, comprehensive backups, JSON output mode, and
 
 **Install (user):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi | bash
+curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi | bash
 ```
 
 **Install (system-wide):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi | sudo bash
+curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi | sudo bash
 ```
 
 After installation just run `ruoyi` (or `ruoyi --mariadb` / `ruoyi redis` etc.).

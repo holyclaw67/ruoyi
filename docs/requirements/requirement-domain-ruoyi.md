@@ -27,7 +27,7 @@ This requirement is the **Domain SSOT** for product **ruoyi** (B): one-command s
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | live domain handlers |
+| `src/ruoyi` | ship unit | live domain handlers |
 | `ruoyi help` | command | listed domain verbs |
 
 | You do… | What it means | What you type |
@@ -38,14 +38,14 @@ This requirement is the **Domain SSOT** for product **ruoyi** (B): one-command s
 
 **Out of scope (peer shell REQs own):** ship-unit install/self-update/self-uninstall detail; empty-argv Type O install-ensure for the CLI binary; automatic companion checksum; `out_*` catalog; modular Type 0 prefixes.
 
-### Identity SSOT (this product — live ship unit `./ruoyi`)
+### Identity SSOT (this product — live ship unit `src/ruoyi`)
 
 | Field | Live value |
 |-------|------------|
 | **APP_NAME** | `ruoyi` |
-| **VERSION** | `2.3.4` |
+| **VERSION** | `2.3.5` |
 | **REPO_USER** / **REPO_NAME** | `cloudgen` / `ruoyi` |
-| **SCRIPT_URL** | `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi` |
+| **SCRIPT_URL** | `https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi` |
 | **Shebang / runtime** | `#!/bin/bash` (SDKMAN/Java domain requires bash; re-exec when needed) |
 | **Dispatcher** | `app_main` |
 | **Output SSOT** | `out_*` family (domain may use `msg` as plain alias) |
@@ -151,9 +151,9 @@ Domain uses **separate prefixes** (`ruo_`, `db_`, `setup_`) and **MUST NOT** str
 ## 4. Acceptance criteria
 
 1. `./selfmanaged` remains APP_NAME=selfmanaged (A not polluted).  
-2. `./ruoyi version` prints product version for B.  
-3. `./ruoyi help` lists domain + Type 0.  
-4. `./ruoyi about` runs without unbound-variable under `set -u`.  
+2. `src/ruoyi version` prints product version for B.  
+3. `src/ruoyi help` lists domain + Type 0.  
+4. `src/ruoyi about` runs without unbound-variable under `set -u`.  
 5. Domain handlers exist for all help verbs.  
 6. This file is the sole Active domain SSOT (`requirement-domain-ruoyi.md`).  
 7. Class file Active: `requirement-class-software-dev.md`.

@@ -25,7 +25,7 @@ It defines a self-managed shell CLI (install / update / uninstall of the tool it
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | `app_main` routing |
+| `src/ruoyi` | ship unit | `app_main` routing |
 | `ruoyi help` | command | listed verbs and flags |
 
 | You do… | What it means | What you type |
@@ -104,12 +104,12 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | Item | Value for ruoyi |
 |------|------------------------|
 | **Product / binary name** | `ruoyi` (`APP_NAME`, default `ruoyi`) |
-| **Primary executable** | Repo root `./ruoyi` (`#!/bin/bash`, single-file for `curl \| bash`; re-exec into bash when needed) |
+| **Primary executable** | `src/ruoyi` (`#!/bin/bash`, single-file for `curl \| bash`; re-exec into bash when needed) |
 | **Dispatcher** | `app_main` (always invoked at end of script: `app_main "$@"` — no `${0##*/}` / APP_NAME basename gate; required for `curl \| sh`) |
 | **Output SSOT** | `out_text` + wrappers (`out_info`, `out_success`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_json`, …) |
-| **Version SSOT** | `VERSION` hard-assign `2.3.4` (script header / config block) |
+| **Version SSOT** | `VERSION` hard-assign `2.3.5` (script header / config block) |
 | **Install paths** | Global: `GLOBAL_BIN` default `/usr/local/bin`; User: `USER_BIN` default `${HOME}/.local/bin` |
-| **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `cloudgen` / `ruoyi`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
+| **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `cloudgen` / `ruoyi`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/src/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
 | **Type 1 / Type 2 surface** | Domain may escalate with **internal `sudo`** for package/DB ops (`mariadb`/`mysql`/`redis`); default CLI lifecycle remains Type 0. Domain catalog: `requirement-domain-ruoyi.md` |
 | **Dedicated system user** | **Not required** for Type 0 CLI self-management |
 
@@ -227,7 +227,7 @@ This requirement is satisfied for the ruoyi shell CLI when all of the following 
 | `docs/requirements/requirement-shell-idempotency.md` | Re-run safety for ensure ops |
 | `docs/requirements/requirement-shell-modular-function-design.md` | Prefix ownership (`app_`, `inst_`, `out_*`) |
 | `docs/requirements/index.md` | Registry SSOT |
-| `./ruoyi` | Implementation under test |
+| `src/ruoyi` | Implementation under test |
 
 ---
 

@@ -56,7 +56,7 @@ When I give you a script or ask to update function names, you must **automatical
 
 # Default target
 if [ -z "$1" ]; then
-    TARGET="ruoyi"
+    TARGET="src/ruoyi"
 else
     TARGET="$1"
 fi

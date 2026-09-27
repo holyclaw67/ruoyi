@@ -23,12 +23,12 @@ This requirement is the **project Single Source of Truth** for **zero-argument (
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | `app_main` empty-argv branch |
+| `src/ruoyi` | ship unit | `app_main` empty-argv branch |
 | README Quick Installation | product docs | one-liners |
 
 | You do… | What it means | What you type |
 |---------|---------------|---------------|
-| First install | No extra command; only the CLI is placed. | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| bash` |
+| First install | No extra command; only the CLI is placed. | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi \| bash` |
 | Prepare RuoYi | Separate explicit domain command. | `ruoyi setup --no-run` |
 
 ### 1.0 Product type (template dual-model)
@@ -43,7 +43,7 @@ Type N (non-online-install → empty argv = help) does **not** apply to this pro
 It defines what happens when the tool is invoked with **no command and no flags**, including the classic one-liner:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi | /bin/sh
+curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi | /bin/sh
 ```
 
 Empty argv means **install-ensure** for three detect cases:
@@ -137,7 +137,7 @@ Empty argv means **install-ensure** for three detect cases:
 |------|------------------------|
 | **Empty-argv type** | **Type O — Online-install** (install-ensure; not Type N help-default) |
 | **Product / binary** | `ruoyi` (`APP_NAME`) |
-| **Ship unit** | Repo root `./ruoyi` |
+| **Ship unit** | `src/ruoyi` |
 | **Dispatcher** | `app_main` — empty-argv block **before** flag/command parse default help |
 | **Install ensure** | `inst_perform_install` (quiet/json and already-installed no-op) |
 | **Friendly first install** | `inst_maybe_install` (TTY confirm / non-TTY auto) when not installed and not quiet/json |
@@ -238,7 +238,7 @@ This requirement is satisfied when all of the following hold:
 | `docs/requirements/requirement-shell-self-management.md` | self-update / uninstall (not empty-argv default) |
 | `docs/requirements/requirement-shell-output-requirements.md` | out_* / JSON purity |
 | `docs/requirements/requirement-shell-automatic-checksum.md` | Integrity on install download path |
-| Repo root `./ruoyi` | Implementation (`app_main`, `inst_*`) |
+| `src/ruoyi` | Implementation (`app_main`, `inst_*`) |
 | `tests/test_cli.sh`, `tests/test_install_lifecycle.sh` | Regression coverage |
 
 ---
@@ -266,7 +266,7 @@ This requirement is satisfied when all of the following hold:
 | **Not Type O-P** | Domain stack (`setup` / SDKMAN / project) is **not** part of empty-argv ensure |
 | **Peer online install law** | `requirement-shell-online-install.md` |
 | **Domain law** | `requirement-domain-ruoyi.md` |
-| **VERSION** | `2.3.4` |
+| **VERSION** | `2.3.5` |
 
 ### P1 mold-depth: Type O-S case matrix (ruoyi)
 
@@ -310,7 +310,7 @@ This requirement is satisfied when all of the following hold:
 1. Case A failure path non-zero.  
 2. Case B or C re-run is not help.  
 3. Peers: `requirement-shell-online-install.md`, `requirement-domain-ruoyi.md` for domain verbs.  
-4. `VERSION` / product identity: `ruoyi` `2.3.4`.
+4. `VERSION` / product identity: `ruoyi` `2.3.5`.
 
 ## Design-time verification (product)
 

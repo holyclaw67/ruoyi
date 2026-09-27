@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.5] - 2026-09-27
+
+### Changed
+- Ship unit moved from `./ruoyi` to `src/ruoyi`. Companion digest is `src/ruoyi.sha256`
+- Default `SCRIPT_URL` is `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/src/${APP_NAME}` (`https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi`)
+- Install one-liners in README, `ruo_help`, and product law use that channel
+
+---
+
 ## [2.3.4] - 2026-09-27
 
 ### Changed

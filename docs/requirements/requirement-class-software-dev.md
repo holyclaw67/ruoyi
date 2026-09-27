@@ -16,7 +16,7 @@ This file is **class law + residual SSOT**, not a second copy of CLI lifecycle, 
 
 | Box | Meaning | Example |
 |-----|---------|---------|
-| You / this login | A maintainer reading which language and tools this product uses | bash ship unit `./ruoyi`; tests via `./tests/run.sh` |
+| You / this login | A maintainer reading which language and tools this product uses | bash ship unit `src/ruoyi`; tests via `./tests/run.sh` |
 | The other role | Peer requirement files that already own install, help, checksum, output | `requirement-shell-cli-interface`, `requirement-shell-automatic-checksum` |
 | Not this file | A second copy of the command table, dest-approval machine, or checksum law | No dest approver; no dest fence queue |
 
@@ -27,7 +27,7 @@ This file is **class law + residual SSOT**, not a second copy of CLI lifecycle, 
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | live identity (`APP_NAME`, `VERSION`) |
+| `src/ruoyi` | ship unit | live identity (`APP_NAME`, `VERSION`) |
 | `docs/requirements/index.md` | registry | live product-law inventory |
 
 | You do… | What it means | What you type |
@@ -108,8 +108,8 @@ This file is **class law + residual SSOT**, not a second copy of CLI lifecycle, 
 | **Primary runtime / OS family** | POSIX Linux (and compatible UNIX where `/bin/sh` + coreutils/`sha256sum`/`mktemp` exist) |
 | **Architectures supported** | any arch with a POSIX sh and the external tools the script invokes (no arch-specific binary) |
 | **Git surface** | used for product publish (`github.com/cloudgen/ruoyi`) |
-| **Ship unit / install** | yes — repo root `./ruoyi` + companion `ruoyi.sha256`; Type 0 online install (peer shell REQs) |
-| **Product version SSOT** | `VERSION="2.3.4"` hard-assign in `./ruoyi` |
+| **Ship unit / install** | yes — `src/ruoyi` + companion `src/ruoyi.sha256`; Type 0 online install (peer shell REQs) |
+| **Product version SSOT** | `VERSION="2.3.5"` hard-assign in `src/ruoyi` |
 | **Actor / role / subject / approver** | **considered — no dest approver** (Type 0 CLI + internal Type 1 domain elev only; no dest approval machine) |
 | **Dest fence conditions** | **considered — no dest fence conditions** (no dest inbound approve/reject queue) |
 

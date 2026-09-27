@@ -171,7 +171,7 @@ Git Bash omits the 2nd fallback line. Mac prints preferred under `/tmp/cache/`, 
 | Item | Live value |
 |------|------------|
 | **Product / binary** | `ruoyi` |
-| **Cache resolver** | `util_resolve_storage` in `./ruoyi` |
+| **Cache resolver** | `util_resolve_storage` in `src/ruoyi` |
 | **Linux preferred** | `/dev/shm/cache/cache-${APP_NAME}-${login}-$$` |
 | **Linux 1st / 2nd** | `/tmp/cache/cache-${APP_NAME}-${login}-$$` then `${HOME}/.cache/cache-${APP_NAME}-$$` |
 | **Git Bash** | `/tmp/cache/cache-${APP_NAME}-${login}-$$` then `${HOME}/AppData/Local/Temp/cache-${APP_NAME}-$$` |

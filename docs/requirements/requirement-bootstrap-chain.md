@@ -14,7 +14,7 @@ Declare the **bootstrap specialization chain** for this product so agents preser
 
 | Box | Meaning | Example |
 |-----|---------|---------|
-| You / this login | A maintainer changing the ruoyi script or its law | Edit `./ruoyi`, not `./selfmanaged`, for product B work |
+| You / this login | A maintainer changing the ruoyi script or its law | Edit `src/ruoyi`, not `./selfmanaged`, for product B work |
 | The other role | Bootstrap origin A (`selfmanaged`) — architecture source only | Shared output/install/dispatcher patterns |
 | Not this file | Domain verbs (setup, mariadb, run) | Those live on `requirement-domain-ruoyi` |
 
@@ -25,13 +25,13 @@ Declare the **bootstrap specialization chain** for this product so agents preser
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | product ship unit (B) | live specialized CLI |
+| `src/ruoyi` | product ship unit (B) | live specialized CLI |
 | `./selfmanaged` | bootstrap reference (A), when present | architecture source — do not overwrite |
 
 | You do… | What it means | What you type |
 |---------|---------------|---------------|
-| Specialize B | Change ruoyi. Leave the bootstrap copy as reference. | Edit `./ruoyi` |
-| Restore direction | If A was overwritten by B, restore A then rebuild B. | Restore `./selfmanaged` from archive, then re-apply domain on `./ruoyi` |
+| Specialize B | Change ruoyi. Leave the bootstrap copy as reference. | Edit `src/ruoyi` |
+| Restore direction | If A was overwritten by B, restore A then rebuild B. | Restore `./selfmanaged` from archive, then re-apply domain on `src/ruoyi` |
 
 ## 2. Core rules
 
@@ -46,13 +46,13 @@ Declare the **bootstrap specialization chain** for this product so agents preser
 | # | Hop name | Position | Ship unit path | Channel owner | Domain? | Notes |
 |---|----------|----------|----------------|---------------|---------|-------|
 | 0 | `selfmanaged` | root / bootstrap A | `./selfmanaged` (also freeze archive under `.specialize-archive/`) | `cloudgen/selfmanaged` | no | Type 0 online shell CLI architecture source |
-| 1 | `ruoyi` | leaf / product B | `./ruoyi` | `cloudgen/ruoyi` | **yes** | RuoYi stack domain; identity retargeted |
+| 1 | `ruoyi` | leaf / product B | `src/ruoyi` | `cloudgen/ruoyi` | **yes** | RuoYi stack domain; identity retargeted |
 
 ### Edges
 
 | Edge | Inherit contracts | Retarget identity/channel | Domain extend |
 |------|-------------------|---------------------------|---------------|
-| selfmanaged → ruoyi | yes (`out_*`, `inst_*`, `app_main`, Type O-S empty argv, companion integrity, modular prefixes) | yes (`APP_NAME=ruoyi`, REPO/SCRIPT_URL, VERSION=2.3.4) | yes (`ruo_*`/`db_*`/`setup_*`) |
+| selfmanaged → ruoyi | yes (`out_*`, `inst_*`, `app_main`, Type O-S empty argv, companion integrity, modular prefixes) | yes (`APP_NAME=ruoyi`, REPO/SCRIPT_URL, VERSION=2.3.5) | yes (`ruo_*`/`db_*`/`setup_*`) |
 
 ### Origin-review defaults
 
@@ -68,7 +68,7 @@ Declare the **bootstrap specialization chain** for this product so agents preser
 
 ## 4. Protection Rule
 
-**MUST NOT** reverse-copy `./ruoyi` onto `./selfmanaged`, thin A’s Type 0 law to match domain-only shortcuts, or claim chain complete without this hop table.
+**MUST NOT** reverse-copy `src/ruoyi` onto `./selfmanaged`, thin A’s Type 0 law to match domain-only shortcuts, or claim chain complete without this hop table.
 
 ## 5. Acceptance criteria
 

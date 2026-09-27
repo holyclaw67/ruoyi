@@ -25,7 +25,7 @@ SSOT for **dated backup before destructive mutation** of project trees and confi
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | `util_backup` call sites |
+| `src/ruoyi` | ship unit | `util_backup` call sites |
 | `$PROJECT_DIR` | Java project | tree being backed up |
 
 | You do… | What it means | What you type |
