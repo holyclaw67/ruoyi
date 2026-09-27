@@ -18,6 +18,6 @@
 | requirement-shell-least-privilege | (docs + elev path) | optional TP-DOM-08 |
 | requirement-shell-path-and-shell-support | TP-INST-01 | test_install_lifecycle.sh |
 | requirement-shell-backup-strategy | TP-DOM-04 | test_domain.sh |
-| requirement-shell-cli-storage | TP-CLI-11 | test_cli.sh |
+| requirement-shell-cli-storage | TP-CLI-11 (cache leaves, silent tier miss, persistence) | test_cli.sh |
 | requirement-shell-interactive-vs-noninteractive | TP-CLI-09, lifecycle | test_cli.sh |
 | requirement-shell-modular-function-design | (structure) | bash -n / suite |

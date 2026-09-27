@@ -1,6 +1,6 @@
 # ruoyi - One-command setup for the RuoYi admin framework
 
-[![Version](https://img.shields.io/badge/Version-2.3.3-blue?style=flat-square)](https://github.com/cloudgen/ruoyi)
+[![Version](https://img.shields.io/badge/Version-2.3.4-blue?style=flat-square)](https://github.com/cloudgen/ruoyi)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE.md)
 [![CIAO](https://img.shields.io/badge/Philosophy-CIAO%20(Caution%20%E2%80%A2%20Intentional%20%E2%80%A2%20Anti--fragile%20%E2%80%A2%20Over--engineered)-purple.svg)](https://github.com/cloudgen/ciao)
 [![Stars](https://img.shields.io/github/stars/cloudgen/ruoyi?style=flat-square)](https://github.com/cloudgen/ruoyi)
@@ -148,4 +148,4 @@ Product law: [docs/requirements/index.md](docs/requirements/index.md). Test map:
 
 ## Last Update
 
-2026-09-06 (2.3.3 — JSON help lists `db`; extra POSIX coverage for aliases, Case A, backup, routes).
+2026-09-27 (2.3.4 — per-login per-process cache folder; persistence under `~/.local/ruoyi`).

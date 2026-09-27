@@ -107,7 +107,7 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | **Primary executable** | Repo root `./ruoyi` (`#!/bin/bash`, single-file for `curl \| bash`; re-exec into bash when needed) |
 | **Dispatcher** | `app_main` (always invoked at end of script: `app_main "$@"` — no `${0##*/}` / APP_NAME basename gate; required for `curl \| sh`) |
 | **Output SSOT** | `out_text` + wrappers (`out_info`, `out_success`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_json`, …) |
-| **Version SSOT** | `VERSION` hard-assign `2.3.3` (script header / config block) |
+| **Version SSOT** | `VERSION` hard-assign `2.3.4` (script header / config block) |
 | **Install paths** | Global: `GLOBAL_BIN` default `/usr/local/bin`; User: `USER_BIN` default `${HOME}/.local/bin` |
 | **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `cloudgen` / `ruoyi`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
 | **Type 1 / Type 2 surface** | Domain may escalate with **internal `sudo`** for package/DB ops (`mariadb`/`mysql`/`redis`); default CLI lifecycle remains Type 0. Domain catalog: `requirement-domain-ruoyi.md` |
@@ -120,7 +120,7 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | *(no args — empty argv)* | Type 0 | `app_main` → `inst_maybe_install` / `inst_perform_install` | **Type O-S install-ensure** for **CLI ship unit only** (not domain stack); see `requirement-shell-cli-zero-arguments.md` + `requirement-shell-online-install.md` |
 | `install` | Type 0 | `inst_perform_install` | Install CLI binary (root→global, user→local); idempotent unless force reinstall |
 | `version` | Type 0 | `app_version` | Print local version; JSON when `--json` |
-| `about` | Type 0 + domain diagnostics | `ruo_about` | Install state + SDKMAN/Java/Maven/project/port diagnostics; **no `CHECKSUM` field** |
+| `about` | Type 0 + domain diagnostics | `ruo_about` | Install state + SDKMAN/Java/Maven/project/port diagnostics; cache folder used/preferred/fallbacks and persistence storage; **no `CHECKSUM` field** |
 | `version-check` | Type 0 | `ver_check` | Compare local vs remote `VERSION` from `SCRIPT_URL` |
 | `self-update` | Type 0 | `inst_self_update` | Reinstall CLI when channel allows |
 | `self-uninstall` | Type 0 | `inst_self_uninstall` | Remove managed CLI binary; safe PATH cleanup |

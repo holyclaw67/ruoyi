@@ -4,7 +4,7 @@
 # Covers: bash -n, companion digest, version/help/about (human+JSON),
 # domain verbs in help, CHECKSUM absent, unknown command, quiet, env -u HOME,
 # zero-arg install failure exit, self-uninstall fail-closed JSON,
-# about storage JSON (TP-CLI-11).
+# about cache folder + persistence (TP-CLI-11).
 # Primary REQs: requirement-shell-cli-interface, online-install, zero-arguments,
 # output-requirements, domain-ruoyi (help pillars), cli-storage
 # =============================================================================
@@ -96,6 +96,109 @@ run_test_cli() {
     assert_not_contains "TP-CLI-05 about --json no CHECKSUM" "$_out" "CHECKSUM"
     assert_contains "TP-CLI-11 about --json effective_storage" "$_out" '"effective_storage"'
     assert_contains "TP-CLI-11 about --json storage_dir" "$_out" '"storage_dir"'
+    assert_contains "TP-CLI-11 about --json cache_used" "$_out" '"cache_used"'
+    assert_contains "TP-CLI-11 about --json cache_preferred" "$_out" '"cache_preferred"'
+    assert_contains "TP-CLI-11 about --json cache_fallback" "$_out" '"cache_fallback"'
+    assert_contains "TP-CLI-11 about --json cache_fallback_2" "$_out" '"cache_fallback_2"'
+    assert_contains "TP-CLI-11 about --json persistence_storage" "$_out" '"persistence_storage"'
+    assert_not_contains "TP-CLI-11 about --json no CHECKSUM" "$_out" "CHECKSUM"
+
+    # TP-CLI-11 cache leaves: per login, per process, host chains, silent skip
+    ci_isolated_env
+    _login=$(id -un 2>/dev/null || echo "unknown")
+    _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" bash "${SCRIPT}" --json about 2>/dev/null)
+    assert_contains "TP-CLI-11 isolated about has app in cache" "$_out" "${APP_NAME}"
+    _pref=$(printf '%s' "$_out" | sed -n 's/.*"cache_preferred":"\([^"]*\)".*/\1/p' | head -n1)
+    _pid="${_pref##*-}"
+    case "${_pref}" in
+        /dev/shm/cache/cache-"${APP_NAME}"-"${_login}"-[0-9]*)
+            t_pass "TP-CLI-11 cache_preferred is shm login process leaf"
+            ;;
+        *) t_fail "TP-CLI-11 cache_preferred unexpected: '${_pref:-empty}'" ;;
+    esac
+    _fb=$(printf '%s' "$_out" | sed -n 's/.*"cache_fallback":"\([^"]*\)".*/\1/p' | head -n1)
+    assert_eq "TP-CLI-11 cache_fallback 1st" "/tmp/cache/cache-${APP_NAME}-${_login}-${_pid}" "${_fb}"
+    _fb2=$(printf '%s' "$_out" | sed -n 's/.*"cache_fallback_2":"\([^"]*\)".*/\1/p' | head -n1)
+    assert_eq "TP-CLI-11 cache_fallback 2nd" "${CI_HOME}/.cache/cache-${APP_NAME}-${_pid}" "${_fb2}"
+    _used=$(printf '%s' "$_out" | sed -n 's/.*"cache_used":"\([^"]*\)".*/\1/p' | head -n1)
+    _eff=$(printf '%s' "$_out" | sed -n 's/.*"effective_storage":"\([^"]*\)".*/\1/p' | head -n1)
+    assert_eq "TP-CLI-11 cache_used matches effective" "${_eff}" "${_used}"
+    assert_eq "TP-CLI-11 used matches preferred when preferred works" "${_pref}" "${_used}"
+    if [ -n "$_eff" ] && [ -d "$_eff" ]; then
+        t_pass "TP-CLI-11 effective cache directory exists"
+    else
+        t_fail "TP-CLI-11 effective cache missing: '${_eff:-empty}'"
+    fi
+    case "${_eff}" in
+        /dev/shm/"${APP_NAME}"|/dev/shm/"${APP_NAME}"-*)
+            t_fail "TP-CLI-11 effective cache must not be ram-drive project shape: '${_eff}'"
+            ;;
+        *) t_pass "TP-CLI-11 effective cache is not a ram-drive project shape" ;;
+    esac
+    _mode=$(stat -c %a "${_eff}" 2>/dev/null || echo "")
+    assert_eq "TP-CLI-11 effective cache mode 0700" "700" "${_mode}"
+    _err=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" RUOYI_CACHE_SKIP=preferred \
+        bash "${SCRIPT}" about 2>&1 >/dev/null)
+    assert_not_contains "TP-CLI-11 silent cache fallback" "${_err}" "fallback"
+    assert_not_contains "TP-CLI-11 silent cache fallback error" "${_err}" "Cannot create cache"
+    _skip=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" RUOYI_CACHE_SKIP=preferred \
+        bash "${SCRIPT}" --json about 2>/dev/null)
+    _skip_eff=$(printf '%s' "$_skip" | sed -n 's/.*"effective_storage":"\([^"]*\)".*/\1/p' | head -n1)
+    _skip_fb=$(printf '%s' "$_skip" | sed -n 's/.*"cache_fallback":"\([^"]*\)".*/\1/p' | head -n1)
+    _skip_pref=$(printf '%s' "$_skip" | sed -n 's/.*"cache_preferred":"\([^"]*\)".*/\1/p' | head -n1)
+    assert_eq "TP-CLI-11 skipped preferred uses 1st fallback" "${_skip_fb}" "${_skip_eff}"
+    case "${_skip_pref}" in
+        /dev/shm/cache/cache-"${APP_NAME}"-"${_login}"-[0-9]*)
+            t_pass "TP-CLI-11 skipped run still reports preferred shm path"
+            ;;
+        *) t_fail "TP-CLI-11 skipped preferred path unexpected: '${_skip_pref:-empty}'" ;;
+    esac
+    _gb=$(HOME="${CI_HOME}" RUOYI_CACHE_HOST=gitbash bash "${SCRIPT}" --json about 2>/dev/null)
+    _gb_pref=$(printf '%s' "$_gb" | sed -n 's/.*"cache_preferred":"\([^"]*\)".*/\1/p' | head -n1)
+    _gb_pid="${_gb_pref##*-}"
+    assert_eq "TP-CLI-11 gitbash preferred" "/tmp/cache/cache-${APP_NAME}-${_login}-${_gb_pid}" "${_gb_pref}"
+    _gb_fb=$(printf '%s' "$_gb" | sed -n 's/.*"cache_fallback":"\([^"]*\)".*/\1/p' | head -n1)
+    assert_eq "TP-CLI-11 gitbash 1st fallback" "${CI_HOME}/AppData/Local/Temp/cache-${APP_NAME}-${_gb_pid}" "${_gb_fb}"
+    assert_contains "TP-CLI-11 gitbash json has cache_fallback_2" "${_gb}" '"cache_fallback_2":""'
+    _gb_fb2=$(printf '%s' "$_gb" | sed -n 's/.*"cache_fallback_2":"\([^"]*\)".*/\1/p' | head -n1)
+    assert_eq "TP-CLI-11 gitbash no 2nd fallback" "" "${_gb_fb2}"
+    _mac=$(HOME="${CI_HOME}" RUOYI_CACHE_HOST=mac bash "${SCRIPT}" --json about 2>/dev/null)
+    _mac_pref=$(printf '%s' "$_mac" | sed -n 's/.*"cache_preferred":"\([^"]*\)".*/\1/p' | head -n1)
+    _mac_pid="${_mac_pref##*-}"
+    assert_eq "TP-CLI-11 mac preferred" "/tmp/cache/cache-${APP_NAME}-${_login}-${_mac_pid}" "${_mac_pref}"
+    _mac_fb=$(printf '%s' "$_mac" | sed -n 's/.*"cache_fallback":"\([^"]*\)".*/\1/p' | head -n1)
+    assert_eq "TP-CLI-11 mac 1st fallback" "${CI_HOME}/Library/Caches/cache-${APP_NAME}-${_mac_pid}" "${_mac_fb}"
+    _mac_fb2=$(printf '%s' "$_mac" | sed -n 's/.*"cache_fallback_2":"\([^"]*\)".*/\1/p' | head -n1)
+    assert_eq "TP-CLI-11 mac 2nd fallback" "${CI_HOME}/cache/cache-${APP_NAME}-${_mac_pid}" "${_mac_fb2}"
+    _hum_l=$(HOME="${CI_HOME}" bash "${SCRIPT}" about 2>/dev/null)
+    assert_contains "TP-CLI-11 linux about used" "${_hum_l}" "Cache folder used:"
+    assert_contains "TP-CLI-11 linux about preferred" "${_hum_l}" "Cache folder (preferred):"
+    assert_contains "TP-CLI-11 linux about 1st" "${_hum_l}" "Cache folder (1st fallback):"
+    assert_contains "TP-CLI-11 linux about 2nd" "${_hum_l}" "Cache folder (2nd fallback):"
+    assert_contains "TP-CLI-11 linux about preferred path" "${_hum_l}" "/dev/shm/cache/cache-${APP_NAME}-${_login}-"
+    assert_contains "TP-CLI-11 linux about 2nd path" "${_hum_l}" "/.cache/cache-${APP_NAME}-"
+    assert_contains "TP-CLI-11 linux about persistence" "${_hum_l}" "Persistence storage:"
+    assert_not_contains "TP-CLI-11 no Storage (effective) label" "${_hum_l}" "Storage (effective)"
+    assert_not_contains "TP-CLI-11 no Storage (fallback) label" "${_hum_l}" "Storage (fallback)"
+    _hum_gb=$(HOME="${CI_HOME}" RUOYI_CACHE_HOST=gitbash bash "${SCRIPT}" about 2>/dev/null)
+    assert_contains "TP-CLI-11 gitbash about 1st" "${_hum_gb}" "AppData/Local/Temp/cache-${APP_NAME}-"
+    assert_not_contains "TP-CLI-11 gitbash about omits 2nd" "${_hum_gb}" "Cache folder (2nd fallback)"
+    _hum_mac=$(HOME="${CI_HOME}" RUOYI_CACHE_HOST=mac bash "${SCRIPT}" about 2>/dev/null)
+    assert_contains "TP-CLI-11 mac about 1st" "${_hum_mac}" "Library/Caches/cache-${APP_NAME}-"
+    assert_contains "TP-CLI-11 mac about 2nd path" "${_hum_mac}" "Cache folder (2nd fallback): ${CI_HOME}/cache/cache-${APP_NAME}-"
+    _persist=$(printf '%s' "$_out" | sed -n 's/.*"persistence_storage":"\([^"]*\)".*/\1/p' | head -n1)
+    assert_eq "TP-CLI-11 persistence_storage path" "${CI_HOME}/.local/${APP_NAME}" "$_persist"
+    if [ -n "$_persist" ] && [ -d "$_persist" ]; then
+        t_pass "TP-CLI-11 persistence storage directory exists"
+    else
+        t_fail "TP-CLI-11 persistence storage missing: '${_persist:-empty}'"
+    fi
+    case "${_persist}" in
+        */.local/bin|*/.local/bin/) t_fail "TP-CLI-11 persistence must not be USER_BIN: '${_persist}'" ;;
+        *) t_pass "TP-CLI-11 persistence is not the install bin directory" ;;
+    esac
+    rm -rf "${_eff}" "${_skip_eff}" "${_gb_pref}" "${_mac_pref}" 2>/dev/null || true
+    ci_cleanup_env
 
     # --- unknown command ---
     _err=$(bash "${SCRIPT}" no-such-command 2>&1 >/dev/null)

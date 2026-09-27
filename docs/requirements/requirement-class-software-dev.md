@@ -109,7 +109,7 @@ This file is **class law + residual SSOT**, not a second copy of CLI lifecycle, 
 | **Architectures supported** | any arch with a POSIX sh and the external tools the script invokes (no arch-specific binary) |
 | **Git surface** | used for product publish (`github.com/cloudgen/ruoyi`) |
 | **Ship unit / install** | yes — repo root `./ruoyi` + companion `ruoyi.sha256`; Type 0 online install (peer shell REQs) |
-| **Product version SSOT** | `VERSION="2.3.3"` hard-assign in `./ruoyi` |
+| **Product version SSOT** | `VERSION="2.3.4"` hard-assign in `./ruoyi` |
 | **Actor / role / subject / approver** | **considered — no dest approver** (Type 0 CLI + internal Type 1 domain elev only; no dest approval machine) |
 | **Dest fence conditions** | **considered — no dest fence conditions** (no dest inbound approve/reject queue) |
 

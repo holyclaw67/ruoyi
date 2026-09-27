@@ -2,7 +2,7 @@
 
 **Product:** ruoyi (RuoYi admin framework one-command setup CLI)  
 **Workspace state:** Specialized software-development product (bootstrap A = selfmanaged; domain B = ruoyi).  
-**Updated:** 2026-09-06 (Human-facing §1.1; version 2.3.3)
+**Updated:** 2026-09-27 (cache folder 1.1.0; version 2.3.4)
 
 | ID / key | Title | Area | Status | Path | Updated |
 |----------|-------|------|--------|------|---------|
@@ -13,7 +13,7 @@
 | requirement-shell-automatic-checksum | Automatic companion-digest integrity | shell | Active | `requirement-shell-automatic-checksum.md` | 2026-09-06 |
 | requirement-shell-backup-strategy | Dated backup before project/yml mutate | shell | Active | `requirement-shell-backup-strategy.md` | 2026-09-06 |
 | requirement-shell-cli-interface | Shell CLI interface (lifecycle + domain routing) | shell | Active | `requirement-shell-cli-interface.md` | 2026-09-06 |
-| requirement-shell-cli-storage | Scratch/cache storage resolve | shell | Active | `requirement-shell-cli-storage.md` | 2026-09-06 |
+| requirement-shell-cli-storage | Per-login per-process cache folder + persistence `${HOME}/.local/${APP_NAME}` | shell | Active (1.1.0) | `requirement-shell-cli-storage.md` | 2026-09-27 |
 | requirement-shell-cli-zero-arguments | Empty argv CLI install-ensure (script-alone) | shell | Active | `requirement-shell-cli-zero-arguments.md` | 2026-09-06 |
 | requirement-shell-error-handling | Defensive error handling (out_die / fail-fast) | shell | Active | `requirement-shell-error-handling.md` | 2026-09-06 |
 | requirement-shell-idempotency | Shell idempotency / re-run safety | shell | Active | `requirement-shell-idempotency.md` | 2026-09-06 |

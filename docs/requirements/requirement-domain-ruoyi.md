@@ -43,7 +43,7 @@ This requirement is the **Domain SSOT** for product **ruoyi** (B): one-command s
 | Field | Live value |
 |-------|------------|
 | **APP_NAME** | `ruoyi` |
-| **VERSION** | `2.3.3` |
+| **VERSION** | `2.3.4` |
 | **REPO_USER** / **REPO_NAME** | `cloudgen` / `ruoyi` |
 | **SCRIPT_URL** | `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi` |
 | **Shebang / runtime** | `#!/bin/bash` (SDKMAN/Java domain requires bash; re-exec when needed) |

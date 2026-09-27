@@ -40,7 +40,8 @@ SSOT for **folder ownership** of the ruoyi CLI (the installed command and its sc
 |------|--------------|---------|
 | User install | `${USER_BIN}/ruoyi` | Placed binary |
 | Global install | `${GLOBAL_BIN}/ruoyi` | Placed binary |
-| Cache / scratch | `${XDG_CACHE_HOME}/ruoyi-${USERNAME}` and/or `/dev/shm/ruoyi-…` | Effective storage (`requirement-shell-cli-storage.md`) |
+| Cache / scratch | `/dev/shm/cache/cache-${APP_NAME}-${login}-$$` (Linux preferred) | Cache folder (`requirement-shell-cli-storage.md`) |
+| Persistence | `${HOME}/.local/${APP_NAME}` | Durable per-login data, not the Java tree |
 
 ### 2.2 Type 2 — target application project folder
 

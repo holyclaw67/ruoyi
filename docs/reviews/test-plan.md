@@ -1,6 +1,6 @@
 # Product test plan map (ruoyi)
 
-**Updated:** 2026-09-06 · **Ship unit version:** read from `./ruoyi` (`VERSION=`)  
+**Updated:** 2026-09-27 · **Ship unit version:** read from `./ruoyi` (`VERSION=`)  
 **Runner:** `./tests/run.sh`
 
 | TP-ID | Status | Suite | Primary requirement |
@@ -15,7 +15,7 @@
 | TP-CLI-08 | have | test_cli.sh | requirement-shell-script-coding (set -u HOME) |
 | TP-CLI-09 | have | test_cli.sh | requirement-shell-cli-zero-arguments |
 | TP-CLI-10 | have | test_cli.sh | requirement-shell-self-management |
-| TP-CLI-11 | have | test_cli.sh | requirement-shell-cli-storage |
+| TP-CLI-11 | have | test_cli.sh | requirement-shell-cli-storage (per-login per-process cache + persistence; Linux / Git Bash / Mac) |
 | TP-CLI-12 | have | test_cli.sh | requirement-shell-cli-interface (`-q`) |
 | TP-CLI-13 | have | test_cli.sh | requirement-shell-output-requirements (`--debug` JSON) |
 | TP-CLI-14 | have | test_cli.sh | requirement-project-folder (`--project-dir` about) |

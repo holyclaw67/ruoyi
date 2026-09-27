@@ -1,6 +1,6 @@
 # Security Policy
 
-**Last updated:** 2026-09-06
+**Last updated:** 2026-09-27
 
 `ruoyi` takes security seriously. We appreciate the efforts of security researchers and users who responsibly disclose vulnerabilities.
 
@@ -14,7 +14,7 @@ We currently provide security updates for the latest released version only.
 
 | Version | Supported |
 |---------|-----------|
-| 2.3.3 (current) | Yes |
+| 2.3.4 (current) | Yes |
 | Older releases | Please upgrade with `ruoyi self-update` |
 
 If you are running an older version, we strongly recommend upgrading to the latest release using:

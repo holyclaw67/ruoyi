@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.4] - 2026-09-27
+
+### Changed
+- Cache folder is per login and per process. Linux: `/dev/shm/cache/cache-${APP_NAME}-${login}-$$`, then `/tmp/cache/cache-${APP_NAME}-${login}-$$`, then `${HOME}/.cache/cache-${APP_NAME}-$$`. Git Bash: `/tmp/cache/...`, then `${HOME}/AppData/Local/Temp/cache-${APP_NAME}-$$`. Mac: `/tmp/cache/...`, then `${HOME}/Library/Caches/...`, then `${HOME}/cache/cache-${APP_NAME}-$$`. Law: `requirement-shell-cli-storage` **1.1.0**
+- `about` prints **Cache folder used**, **preferred**, **1st fallback**, **2nd fallback** when that host has one, and **Persistence storage** (`${HOME}/.local/ruoyi`)
+
+### Fixed
+- A writable `/dev/shm` no longer aborts storage when the leaf cannot be created. The next tier is tried with no warning and no error
+- Preferred cache is no longer `/dev/shm/ruoyi-${USERNAME}` (that shape looks like a ram-drive project tree, and one leaf was shared by every process of that login)
+- Home cache leaves no longer repeat the login name. Scratch files use `util_mktemp` names, not a predictable `$$` file name
+- `about` no longer labels cache lines **Storage (effective)** / **Storage (fallback)**
+- Stale `VERSION` fallback `1.2.0` in `app_version` / `app_about` now matches the ship unit
+
+---
+
 ## [2.3.3] - 2026-09-06
 
 ### Added

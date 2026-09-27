@@ -20,7 +20,7 @@ SSOT for **dated backup before destructive mutation** of project trees and confi
 
 | Includes | Excludes |
 |----------|----------|
-| Dated backup of `PROJECT_DIR` / `application-druid.yml` before replace | Scratch under `/dev/shm` |
+| Dated backup of `PROJECT_DIR` / `application-druid.yml` before replace | Cache folder scratch (`requirement-shell-cli-storage`) |
 | Fail loud or documented warn on backup helper failure | Logging secrets in backup filenames |
 
 | Surface | What you open | What for |
@@ -40,7 +40,7 @@ SSOT for **dated backup before destructive mutation** of project trees and confi
 | **User-edited project tree** | existing RuoYi clone under `PROJECT_DIR` | **Yes** before `rm -rf` / force re-clone |
 | **Config with credentials** | `application-druid.yml` | **Yes** before rewrite |
 | **CLI binary replace** | `inst_perform_install` staging | Install orchestrator owns temp stage (not this file’s tree backup) |
-| **Ephemeral scratch** | `/dev/shm/ruoyi-*` | No durable backup requirement |
+| **Ephemeral scratch** | Cache folder `cache-${APP_NAME}-${login}-$$` | No durable backup requirement |
 
 ## 3. When dated file/folder backup is required
 
