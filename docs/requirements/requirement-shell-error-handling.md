@@ -27,7 +27,7 @@ SSOT for **defensive error handling** on `ruoyi`: fail loud for critical faults,
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | `out_die` call sites |
+| `src/ruoyi` | ship unit | `out_die` call sites |
 | `ruoyi help` | command | recovery pointer |
 
 | You do… | What it means | What you type |

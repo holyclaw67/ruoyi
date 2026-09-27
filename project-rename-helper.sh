@@ -26,7 +26,7 @@
 
 # Default target
 if [ -z "$1" ]; then
-    TARGET="ruoyi"
+    TARGET="src/ruoyi"
 else
     TARGET="$1"
 fi

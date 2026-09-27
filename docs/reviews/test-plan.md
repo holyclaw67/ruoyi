@@ -1,6 +1,6 @@
 # Product test plan map (ruoyi)
 
-**Updated:** 2026-09-27 · **Ship unit version:** read from `./ruoyi` (`VERSION=`)  
+**Updated:** 2026-09-27 · **Ship unit version:** read from `src/ruoyi` (`VERSION=`)  
 **Runner:** `./tests/run.sh`
 
 | TP-ID | Status | Suite | Primary requirement |

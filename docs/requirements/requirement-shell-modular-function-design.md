@@ -12,7 +12,7 @@ This requirement is the **project Single Source of Truth** for **modular functio
 
 | Box | Meaning | Example |
 |-----|---------|---------|
-| You / this login | Maintainer editing `./ruoyi` | Change output in `out_*`, install in `inst_*` |
+| You / this login | Maintainer editing `src/ruoyi` | Change output in `out_*`, install in `inst_*` |
 | The other role | Domain prefixes `ruo_*` / `db_*` / `setup_*` | RuoYi stack, not CLI lifecycle |
 | Not this file | Command names users type | `requirement-shell-cli-interface` |
 
@@ -23,12 +23,12 @@ This requirement is the **project Single Source of Truth** for **modular functio
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | function prefixes |
-| `bash -n ./ruoyi` | syntax check | suite TP-CLI-01 |
+| `src/ruoyi` | ship unit | function prefixes |
+| `bash -n src/ruoyi` | syntax check | suite TP-CLI-01 |
 
 | You do… | What it means | What you type |
 |---------|---------------|---------------|
-| Check syntax | The single file must parse. | `bash -n ./ruoyi` |
+| Check syntax | The single file must parse. | `bash -n src/ruoyi` |
 
 It defines modular function organization for a **monolithic yet modular** single-file shell tool that remains `curl | sh` compatible.
 
@@ -52,7 +52,7 @@ CIAO-Lite shell CLIs distributed as one-liners **MUST** use:
 | **Documented units** | Every public helper carries a defensive header and safe defaults |
 | **Requirements extract policy** | Durable rules live in `requirement-*.md`; code comments encode intent and Protection Zones |
 
-Optional multi-file layout under `src/` for future authoring **MAY** exist only if a build or pack step still produces **one** installable artifact and this requirement is updated. Until then, `./ruoyi` remains the single shipped script.
+The installable artifact is the single file `src/ruoyi` (channel path `main/src/${APP_NAME}`). A further split into multiple runtime files under `src/` **MAY** exist only if a pack step still produces that one file and this requirement is updated.
 
 ### 2.2 Official function prefix table (mandatory)
 
@@ -90,7 +90,7 @@ Every non-trivial function **MUST** include a defensive header of this shape (tr
 
 #### 2.3.1 Product-source documentation authority
 
-Optional `ALIGNMENT` / `See` / “fully synchronized with” lines in **product source** (`./ruoyi`) **MUST** cite only **live** `docs/requirements/requirement-*.md` paths that exist on disk and appear in `docs/requirements/index.md`.
+Optional `ALIGNMENT` / `See` / “fully synchronized with” lines in **product source** (`src/ruoyi`) **MUST** cite only **live** `docs/requirements/requirement-*.md` paths that exist on disk and appear in `docs/requirements/index.md`.
 
 | Allowed in product source comments | Forbidden in product source comments |
 |------------------------------------|--------------------------------------|
@@ -167,14 +167,14 @@ function_name() {
 | Item | Value for ruoyi |
 |------|------------------------|
 | **Product / binary** | `ruoyi` (`APP_NAME`) |
-| **Single shipped script** | Repo root `./ruoyi` (~2k lines, `#!/bin/sh`) |
-| **`src/` directory** | Present but empty — **not** a multi-file runtime layout yet |
+| **Single shipped script** | `src/ruoyi` (one file, `#!/bin/bash`) |
+| **`src/` directory** | Holds `src/ruoyi` and `src/ruoyi.sha256`. Not a multi-file runtime |
 | **Domain prefix `ruoyi_*`** | **Not used** today (Type 0 lifecycle only; no product domain ops) |
 | **Bootstrap** | Direct execution when `${0##*/}` is `ruoyi` or `ruoyi.sh` → `app_main "$@"` |
 
 #### Live prefix inventory (authoritative categories)
 
-| Prefix | Live examples in `./ruoyi` |
+| Prefix | Live examples in `src/ruoyi` |
 |--------|----------------------------------|
 | `out_` | `out_text`, `out_success`, `out_info`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_msg_n`, `out_empty_line`, `out_double_line`, `out_json`, `out_json_error` |
 | `inst_` | `inst_perform_install`, `inst_perform_install_prepare_target`, `inst_perform_install_download_with_checksum`, `inst_perform_install_download_without_checksum`, `inst_perform_install_atomic_install`, `inst_maybe_install`, `inst_self_update`, `inst_self_uninstall` (+ determine_bin / confirm_and_remove / cleanup_path), `inst_is_installed`, `inst_get_version` |
@@ -195,7 +195,7 @@ function_name() {
 
 #### New function checklist (this project)
 
-When adding a function to `./ruoyi`:
+When adding a function to `src/ruoyi`:
 
 1. Choose the correct prefix from §2.2 / this inventory.  
 2. Add the defensive header (full for non-trivial logic).  
@@ -273,7 +273,7 @@ A modular-structure change for ruoyi is **not done** if any of the following fai
 | `docs/requirements/requirement-shell-idempotency.md` | Re-run safety inside ensure helpers |
 | `docs/requirements/requirement-shell-output-requirements.md` | `out_*` ownership |
 | `docs/requirements/index.md` | Registry SSOT |
-| `./ruoyi` | Implementation under modular design rules |
+| `src/ruoyi` | Implementation under modular design rules |
 
 ---
 

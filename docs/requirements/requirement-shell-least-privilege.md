@@ -27,7 +27,7 @@ SSOT for **command privilege classification** and **internal elevation** for pro
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | internal `sudo` call sites |
+| `src/ruoyi` | ship unit | internal `sudo` call sites |
 | `ruoyi help` | command | which verbs may elevate |
 
 | You do… | What it means | What you type |

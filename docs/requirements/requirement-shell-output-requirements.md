@@ -23,7 +23,7 @@ This requirement is the **project Single Source of Truth** for **all CLI output*
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | `out_info` / `out_json` / `out_die` |
+| `src/ruoyi` | ship unit | `out_info` / `out_json` / `out_die` |
 | `ruoyi version --quiet` | command | empty stdout on success |
 
 | You do… | What it means | What you type |
@@ -50,11 +50,11 @@ It defines the centralized output system and stdout/stderr channel contracts for
 | Ad-hoc `echo >&2` diagnostics | `out_warn` / `out_error` / `out_debug` |
 | Second parallel “print helper” that bypasses mode guards | Extend `out_text` / wrappers only |
 
-**Not every `printf` / `echo` is a violation.** The ban targets **product messaging** (what the CLI user or machine consumer sees as the command’s message/JSON). The following exceptions are **allowed** and intentional in this project (aligned with live `./ruoyi` practice and §2.1.1 below).
+**Not every `printf` / `echo` is a violation.** The ban targets **product messaging** (what the CLI user or machine consumer sees as the command’s message/JSON). The following exceptions are **allowed** and intentional in this project (aligned with live `src/ruoyi` practice and §2.1.1 below).
 
 ### 2.1.1 Allowed `printf` / `echo` exceptions (this project)
 
-| Exception class | Rule | Live examples in `./ruoyi` |
+| Exception class | Rule | Live examples in `src/ruoyi` |
 |-----------------|------|-----------------------------------|
 | **A. Inside output SSOT** | Only `out_text`, `out_json`, and `out_json_error` may `printf` to fd 1/2 for **product** human or JSON lines. Nested `printf … \| sed` used only to escape strings for those emitters is part of the same SSOT. | `out_text` level cases; `out_json` / `out_json_error` body builders |
 | **B. Function return-via-stdout** | A helper may `printf '%s' "$value"` (or `echo "$value"`) **solely** so callers capture it with `$(…)`. That write is a **data return**, not product UI. Callers must capture it; bare top-level invocation must not be used as the user-facing message path. | `inst_self_uninstall_determine_bin`, `util_get_install_bin_path`, `inst_get_version`, `util_resolve_storage`, `util_get_current_shell`, `prompt_ask` (answer/default return only; prompt text still via `out_*`) |
@@ -141,7 +141,7 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 | Item | Value for ruoyi |
 |------|------------------------|
 | **Product / binary** | `ruoyi` (`APP_NAME`) |
-| **Implementation file** | Repo root `./ruoyi` |
+| **Implementation file** | `src/ruoyi` |
 | **Human SSOT** | `out_text` |
 | **JSON SSOT** | `out_json` / `out_json_error` |
 | **Mode flags** | `QUIET`, `JSON`, `DEBUG`, `TTY` (defaults `0` except TTY when stdin/stdout are TTYs) |
@@ -151,7 +151,7 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 
 #### Live `out_*` inventory
 
-| Function | Role in `./ruoyi` |
+| Function | Role in `src/ruoyi` |
 |----------|-------------------------|
 | `out_text` | Human SSOT; JSON short-circuit; quiet filter; channel by level |
 | `out_success` / `out_info` / `out_warn` / `out_error` | Level wrappers |
@@ -229,7 +229,7 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 
 1. Add raw `echo`, `printf`, or direct fd writes for **product** user/machine messages outside the central output functions (do not “ban” legitimate §2.1.1 exceptions).  
 2. Misuse return-via-stdout, file redirects, or tool pipes as cover for user-facing banners without `out_*`.  
-3. Cite `template-*.md` or `skill-*.md` in **product source** (`./ruoyi`) as output authority — cite this requirement file only.  
+3. Cite `template-*.md` or `skill-*.md` in **product source** (`src/ruoyi`) as output authority — cite this requirement file only.  
 4. Bypass `out_*` for “quick debug” on stdout.  
 5. Remove or weaken **`--json` forces quiet** / human-suppression in `out_text`.  
 6. Emit human banners on stdout while claiming JSON mode.  
@@ -268,7 +268,7 @@ Output-related work for ruoyi is **not done** if any of the following fail:
 | `docs/requirements/requirement-shell-modular-function-design.md` | `out_*` prefix ownership |
 | `docs/requirements/requirement-shell-interactive-vs-noninteractive.md` | Mode interaction with quiet/json |
 | `docs/requirements/index.md` | Registry SSOT |
-| `./ruoyi` | Implementation under test |
+| `src/ruoyi` | Implementation under test |
 
 ---
 

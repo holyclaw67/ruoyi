@@ -23,7 +23,7 @@ This requirement is the **project Single Source of Truth** for how the ruoyi **P
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | confirm vs auto-install |
+| `src/ruoyi` | ship unit | confirm vs auto-install |
 | `ruoyi --json self-uninstall` | command | fail closed without `--force` |
 
 | You do… | What it means | What you type |
@@ -133,7 +133,7 @@ interactive   non-interactive
 | Item | Value for ruoyi |
 |------|------------------------|
 | **Product / binary** | `ruoyi` |
-| **Implementation** | Repo root `./ruoyi` |
+| **Implementation** | `src/ruoyi` |
 | **Mode globals** | `TTY`, `QUIET`, `JSON`, `DEBUG`, `FORCE`, `FORCE_REINSTALL` |
 | **TTY init** | `[ -t 0 ] && [ -t 1 ] && TTY=1` near config block |
 | **Flag parse SSOT** | `app_main` |
@@ -245,7 +245,7 @@ Mode-related work for ruoyi is **not done** if any of the following fail:
 | `docs/requirements/requirement-shell-self-management.md` | Uninstall confirm / force policy |
 | `docs/requirements/requirement-shell-idempotency.md` | Re-run safety under automation |
 | `docs/requirements/index.md` | Registry SSOT |
-| `./ruoyi` | Implementation under test |
+| `src/ruoyi` | Implementation under test |
 
 ---
 

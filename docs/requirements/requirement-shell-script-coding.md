@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-SSOT for **shell coding style** of ship unit `./ruoyi` (bash shebang for SDKMAN domain; lifecycle core remains POSIX-style defensive patterns inherited from selfmanaged).
+SSOT for **shell coding style** of ship unit `src/ruoyi` (bash shebang for SDKMAN domain; lifecycle core remains POSIX-style defensive patterns inherited from selfmanaged).
 
 **Intention:** without this file, portable learned lessons arrive **raw** (agents would treat coding skills as product law). This file is the specialize-in home; peer requirements still own output, prefixes, TTY, and temps — this file **points**, it does not duplicate those bodies.
 
@@ -18,7 +18,7 @@ SSOT for **shell coding style** of ship unit `./ruoyi` (bash shebang for SDKMAN 
 
 | Box | Meaning | Example |
 |-----|---------|---------|
-| You / this login | Maintainer changing `./ruoyi` | `bash -n ./ruoyi`; `set -u` with `HOME` unset still works |
+| You / this login | Maintainer changing `src/ruoyi` | `bash -n src/ruoyi`; `set -u` with `HOME` unset still works |
 | The other role | Peer files that already own output / prefixes / TTY | Point; do not copy the full tables here |
 | Not this file | User-facing command names | `requirement-shell-cli-interface` |
 
@@ -29,12 +29,12 @@ SSOT for **shell coding style** of ship unit `./ruoyi` (bash shebang for SDKMAN 
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | style under test |
+| `src/ruoyi` | ship unit | style under test |
 | `./tests/run.sh` | suite | TP-CLI-01 syntax, TP-CLI-08 `HOME` unset |
 
 | You do… | What it means | What you type |
 |---------|---------------|---------------|
-| Syntax check | The file must parse as bash. | `bash -n ./ruoyi` |
+| Syntax check | The file must parse as bash. | `bash -n src/ruoyi` |
 
 ## 2. Core rules
 
@@ -90,7 +90,7 @@ Harsh environments: Alpine, containers, `curl|bash`, minimal PATH. Domain may re
 
 | Item | Live |
 |------|------|
-| Ship unit | `./ruoyi` |
+| Ship unit | `src/ruoyi` |
 | Bootstrap architecture | from `./selfmanaged` (A) |
 | Modular peer | `requirement-shell-modular-function-design.md` |
 | Output peer | `requirement-shell-output-requirements.md` |
@@ -109,5 +109,5 @@ Harsh environments: Alpine, containers, `curl|bash`, minimal PATH. Domain may re
 ## 5. Acceptance criteria
 
 1. Prefix table matches ship unit inventory.  
-2. `bash -n ./ruoyi` clean.  
+2. `bash -n src/ruoyi` clean.  
 3. Registry row present.

@@ -23,7 +23,7 @@ This requirement is the **project Single Source of Truth** for **CLI self-manage
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
-| `./ruoyi` | ship unit | lifecycle handlers |
+| `src/ruoyi` | ship unit | lifecycle handlers |
 | `ruoyi about` | command | install + stack diagnostics |
 
 | You do… | What it means | What you type |
@@ -123,21 +123,21 @@ Root may write global install path; non-root uses user path. Do not assume root 
 | Item | Value for ruoyi |
 |------|------------------------|
 | **Product / binary** | `ruoyi` (`APP_NAME`) |
-| **Implementation file** | Repo root `./ruoyi` |
+| **Implementation file** | `src/ruoyi` |
 | **Dispatcher** | `app_main` routes `version-check` → `ver_check`; `self-update` → `inst_self_update`; `self-uninstall` → `inst_self_uninstall`; `about` → `app_about` |
 | **Install orchestrator SSOT** | `inst_perform_install` (+ prepare / download with or without checksum / atomic install) |
 | **Version compare** | `ver_gt` (pure POSIX); local version via `inst_get_version` |
 | **Install presence** | `inst_is_installed` |
 | **Paths** | `GLOBAL_BIN` default `/usr/local/bin`; `USER_BIN` default `${HOME}/.local/bin` |
 | **Repository identity** | `REPO_USER` default `cloudgen`; `REPO_NAME` default `ruoyi` |
-| **Release channel** | `SCRIPT_URL` Config default composed as `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (this project: `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi` — product channel SSOT; override `SCRIPT_URL` or `REPO_*` via env if needed) |
+| **Release channel** | `SCRIPT_URL` Config default composed as `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/src/${APP_NAME}` (this project: `https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi` — product channel SSOT; override `SCRIPT_URL` or `REPO_*` via env if needed) |
 | **Strict digest pin** | Runtime `CHECKSUM` when set in process env → `inst_perform_install_download_with_checksum` (secondary install-path only; **not** shown in `help`/`about`; see automatic-checksum requirement) |
 | **Companion digest** | Default `${SCRIPT_URL}.sha256` via `inst_perform_install_download_without_checksum` — law + transparency: `requirement-shell-automatic-checksum.md` |
 | **Force reinstall** | `FORCE_REINSTALL`; CLI `--force` required by CLI interface requirement |
 | **Uninstall steps** | `inst_self_uninstall_determine_bin` → `inst_self_uninstall_confirm_and_remove` → `inst_self_uninstall_cleanup_path` |
 | **PATH ensure** | `path_add_shell` / bash / zsh / fish helpers on user install |
 | **Privilege** | Type 0 only for self-management surface; no dedicated system user |
-| **Version SSOT** | `VERSION` hard-assign `2.3.4` in script config block |
+| **Version SSOT** | `VERSION` hard-assign `2.3.5` in script config block |
 
 #### Normative acceptance behaviors (this project)
 
@@ -157,7 +157,7 @@ Root may write global install path; non-root uses user path. Do not assume root 
 |------|--------|
 | Downgrade gate via `ver_gt` (refuse unless `--force`) | **Implemented** in `inst_self_update` (2026-07-12) |
 | CLI `--force` → `FORCE` / `FORCE_REINSTALL` | **Implemented** in `app_main` |
-| `SCRIPT_URL` default channel URL | **This project:** non-empty product default composed from `REPO_USER` / `REPO_NAME` / `APP_NAME` (`https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi`); product README must show simple literal one-liner(s) from that SSOT; env may still override |
+| `SCRIPT_URL` default channel URL | **This project:** non-empty product default composed from `REPO_USER` / `REPO_NAME` / `APP_NAME` (`https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi`); product README must show simple literal one-liner(s) from that SSOT; env may still override |
 
 ### 2.9 Why This Requirement Exists (Direct CIAO Alignment)
 
@@ -227,7 +227,7 @@ Work claiming self-management support for ruoyi is **not done** if any of the fo
 | `docs/requirements/requirement-shell-output-requirements.md` | Lifecycle messaging / quiet / JSON |
 | `docs/requirements/requirement-shell-modular-function-design.md` | `inst_*` / `out_*` ownership |
 | `docs/requirements/index.md` | Registry SSOT |
-| `./ruoyi` | Implementation under test |
+| `src/ruoyi` | Implementation under test |
 
 ---
 

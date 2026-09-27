@@ -26,12 +26,12 @@ Single Source of Truth for **online one-liner install** of the **ruoyi CLI ship 
 | Surface | What you open | What for |
 |---------|---------------|----------|
 | README Quick Installation | product docs | copy-paste one-liners |
-| `./ruoyi` | ship unit | `SCRIPT_URL` default |
+| `src/ruoyi` | ship unit | `SCRIPT_URL` default |
 
 | You do… | What it means | What you type |
 |---------|---------------|---------------|
-| User install | Command lands in `~/.local/bin/ruoyi`. | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| bash` |
-| System-wide | Command lands in `/usr/local/bin/ruoyi`. | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| sudo bash` |
+| User install | Command lands in `~/.local/bin/ruoyi`. | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi \| bash` |
+| System-wide | Command lands in `/usr/local/bin/ruoyi`. | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi \| sudo bash` |
 
 **Product class:** **Type O-S** (script-alone). Domain stack ensure is **not** part of empty-argv — see `requirement-domain-ruoyi.md` and `requirement-shell-cli-zero-arguments.md`.  
 **Not Type O-P:** do not use `template-payload-online-install` as this product’s empty-argv law unless product class is intentionally reclassified.
@@ -54,11 +54,11 @@ Single Source of Truth for **online one-liner install** of the **ruoyi CLI ship 
 | Field | Value |
 |-------|--------|
 | **APP_NAME** | `ruoyi` |
-| **VERSION** | `2.3.4` |
+| **VERSION** | `2.3.5` |
 | **REPO_USER** / **REPO_NAME** | `cloudgen` / `ruoyi` |
-| **SCRIPT_URL** | `https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi` |
-| **One-liner (user)** | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| bash` |
-| **One-liner (global)** | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/ruoyi \| sudo bash` |
+| **SCRIPT_URL** | `https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi` |
+| **One-liner (user)** | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi \| bash` |
+| **One-liner (global)** | `curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi \| sudo bash` |
 | **Shebang** | `#!/bin/bash` (+ re-exec when installed path invoked under non-bash) |
 | **Dispatcher** | `app_main "$@"` always (no `$0` basename gate) |
 | **Install-mode package** | **Online-only** Type O-S (not dual local-self-managed; not bare `uninstall` as online remove) |
@@ -78,7 +78,7 @@ Root one-liner / elevated install → `${GLOBAL_BIN}/ruoyi` (default `/usr/local
 | Variable | Family | Role | Live default |
 |----------|--------|------|--------------|
 | `APP_NAME` | identity | Binary / raw file segment | hard-assign `ruoyi` + `: "${APP_NAME:=ruoyi}"` |
-| `VERSION` | identity | Local version SSOT | hard-assign `2.3.4` |
+| `VERSION` | identity | Local version SSOT | hard-assign `2.3.5` |
 | `REPO_USER` | channel | Git owner | `cloudgen` |
 | `REPO_NAME` | channel | Git repo | `ruoyi` |
 | `SCRIPT_URL` | channel | Full install channel URL | composed from REPO_* + APP_NAME; env override allowed |
@@ -92,7 +92,7 @@ Root one-liner / elevated install → `${GLOBAL_BIN}/ruoyi` (default `/usr/local
 
 | How the user runs it | Typical `${0##*/}` | Entry expectation |
 |----------------------|--------------------|-------------------|
-| Installed binary / `./ruoyi` | Often `ruoyi` | Call `app_main` |
+| Installed binary / `src/ruoyi` | Often `ruoyi` | Call `app_main` |
 | `bash /path/to/ruoyi` | File basename | Call `app_main` |
 | `curl … \| bash` / `… \| sudo bash` | **`bash`** / **`sh`** / … | **Must still call `app_main`** |
 
@@ -181,10 +181,10 @@ Already installed (local or global) → success no-op on empty argv / `install` 
 
 | Item | Live |
 |------|------|
-| Install orchestrator | `inst_perform_install` / helpers as shipped in `./ruoyi` |
+| Install orchestrator | `inst_perform_install` / helpers as shipped in `src/ruoyi` |
 | Empty argv branch | Top of `app_main` before help default |
 | Domain after install | Explicit `setup` / `run` / `mariadb` — not empty argv |
-| Companion digest file | `ruoyi.sha256` at publish time |
+| Companion digest file | `src/ruoyi.sha256` at publish time |
 
 ## 5. Why this pattern exists (CIAO)
 
