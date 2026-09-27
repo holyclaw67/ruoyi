@@ -12,7 +12,7 @@ TESTS_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "${TESTS_ROOT}/.." && pwd)
 APP_NAME="${APP_NAME:-ruoyi}"
 export TESTS_ROOT REPO_ROOT APP_NAME
-SCRIPT="${REPO_ROOT}/${APP_NAME}"
+SCRIPT="${REPO_ROOT}/src/${APP_NAME}"
 export SCRIPT
 
 # shellcheck source=helpers.sh

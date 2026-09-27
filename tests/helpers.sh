@@ -9,7 +9,7 @@
 : "${TESTS_ROOT:=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}"
 : "${REPO_ROOT:=$(CDPATH= cd -- "${TESTS_ROOT}/.." && pwd)}"
 : "${APP_NAME:=ruoyi}"
-: "${SCRIPT:=${REPO_ROOT}/${APP_NAME}}"
+: "${SCRIPT:=${REPO_ROOT}/src/${APP_NAME}}"
 : "${PASS:=0}"
 : "${FAIL:=0}"
 : "${SKIP:=0}"

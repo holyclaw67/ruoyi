@@ -23,12 +23,12 @@ run_test_cli() {
     assert_eq "TP-CLI-01 bash -n ruoyi (syntax)" 0 "$?"
 
     # --- companion digest matches ship unit ---
-    if [ -f "${REPO_ROOT}/ruoyi.sha256" ]; then
-        _expected=$(ci_digest_hex "${REPO_ROOT}/ruoyi.sha256")
+    if [ -f "${REPO_ROOT}/src/ruoyi.sha256" ]; then
+        _expected=$(ci_digest_hex "${REPO_ROOT}/src/ruoyi.sha256")
         _actual=$(sha256sum "${SCRIPT}" | awk '{print $1}')
-        assert_eq "TP-CLI-02 ruoyi.sha256 matches ./ruoyi" "$_expected" "$_actual"
+        assert_eq "TP-CLI-02 src/ruoyi.sha256 matches src/ruoyi" "$_expected" "$_actual"
     else
-        t_fail "TP-CLI-02 ruoyi.sha256 missing at repo root"
+        t_fail "TP-CLI-02 src/ruoyi.sha256 missing"
     fi
 
     # --- version (human) ---

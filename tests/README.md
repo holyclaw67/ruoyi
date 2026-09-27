@@ -1,6 +1,6 @@
 # Tests (ruoyi)
 
-POSIX `/bin/sh` CI harness for the bash ship unit `./ruoyi` (Type O-S online CLI + RuoYi domain).
+POSIX `/bin/sh` CI harness for the bash ship unit `src/ruoyi` (Type O-S online CLI + RuoYi domain).
 
 ## Run
 
@@ -18,7 +18,7 @@ Requires: `bash`, `curl`, `python3` (local HTTP channel), `sha256sum`, `grep`.
 | Install lifecycle | `test_install_lifecycle.sh` | Isolated install via local channel, Type O-S empty-argv Case B/C, version-check, self-update, integrity transparency, uninstall |
 | Domain | `test_domain.sh` | Help domain catalog, offline `setup --no-run` with stubs, run/db-extract routing, empty-argv is not domain |
 
-**Version:** suites read `PRODUCT_VERSION` from `grep '^VERSION="' ./ruoyi`. After a bump, regenerate `ruoyi.sha256` and re-run `./tests/run.sh`.
+**Version:** suites read `PRODUCT_VERSION` from `grep '^VERSION="' src/ruoyi`. After a bump, regenerate `src/ruoyi.sha256` and re-run `./tests/run.sh`.
 
 ## Maps
 
