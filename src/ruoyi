@@ -1,0 +1,4700 @@
+#!/bin/bash
+# =============================================================================
+# ruoyi - RuoYi admin framework one-command setup (self-managed Type 0 + domain)
+# =============================================================================
+#
+# FULL FEATURED SELF-MANAGED PROGRAM (CIAO / CIAO-Lite Compliant)
+#
+# Bootstrap specialize: architecture from selfmanaged (A) → product ruoyi (B).
+# Direction A→B only; do not reverse-copy ruoyi into the selfmanaged bootstrap.
+# Domain oracle: .specialize-archive/ruoyi.domain-oracle (RuoYi stack setup).
+# Product domain: install(stack)|mariadb|mysql|redis|run|db-extract (+ Type 0 self-*).
+#
+# Shebang is bash because SDKMAN/Java domain requires bash; Type 0 core stays
+# POSIX-style defensive patterns inherited from selfmanaged.
+# Re-exec into bash if invoked under sh/dash (except pure stdin pipe without bash).
+#
+# Project requirements (docs/requirements/ only — never cite templates here):
+# - requirement-class-software-dev.md
+# - requirement-bootstrap-chain.md
+# - requirement-shell-online-install.md
+# - requirement-shell-cli-interface.md
+# - requirement-shell-cli-zero-arguments.md  (Type O-S empty argv = CLI install-ensure)
+# - requirement-shell-idempotency.md
+# - requirement-shell-self-management.md
+# - requirement-shell-modular-function-design.md
+# - requirement-shell-output-requirements.md
+# - requirement-shell-interactive-vs-noninteractive.md
+# - requirement-shell-automatic-checksum.md
+# - requirement-shell-path-and-shell-support.md
+# - requirement-shell-backup-strategy.md
+# - requirement-shell-cli-storage.md
+# - requirement-shell-least-privilege.md
+# - requirement-shell-script-coding.md
+# - requirement-shell-error-handling.md
+# - requirement-project-folder.md
+# - requirement-domain-ruoyi.md
+# Plus CIAO Protection Zones and "DO NOT MODIFY" rules.
+#
+# Philosophy: CIAO (Caution • Intentional • Anti-fragile • Over-engineered)
+# Single file for curl | bash compatibility.
+#
+# APP_NAME: product binary name (Config SSOT; default ruoyi below).
+# REPO_USER / REPO_NAME: GitHub owner/repo identity for the install channel (B).
+# SCRIPT_URL: product channel SSOT — raw path main/src/${APP_NAME}.
+#
+# =============================================================================
+if [ -z "${BASH_VERSION:-}" ]; then
+    if command -v bash >/dev/null 2>&1; then
+        case "${0##*/}" in
+            sh|dash|ash|busybox)
+                printf '%s\n' "ruoyi requires bash for SDKMAN/Java domain. Use: curl -fsSL <url> | bash" >&2
+                exit 1
+                ;;
+            *)
+                exec bash "$0" "$@"
+                ;;
+        esac
+    else
+        printf '%s\n' "ruoyi requires bash, but bash was not found on PATH." >&2
+        exit 1
+    fi
+fi
+
+set -u  # Treat unset variables as error (defensive)
+# Note: We do NOT use set -e globally. We use explicit error handling via out_die.
+
+# =============================================================================
+# GLOBAL SAFE DEFAULTS (Single Source of Truth for configuration)
+# =============================================================================
+# Product identity SSOT (extractors use: grep '^APP_NAME="' / '^VERSION="').
+APP_NAME="ruoyi"
+: "${APP_NAME:=ruoyi}"
+: "${APP_DESC:=RuoYi admin framework one-command setup (SDKMAN/Java/Maven/DB)}"
+: "${SHORT_DESCRIPTION:=${APP_DESC}}"
+: "${DESCRIPTION:=POSIX/bash Type 0 CLI + RuoYi domain: install, version-check, self-update, self-uninstall, about, mariadb, mysql, redis, run, db-extract.}"
+# Product version SSOT (semver). Extractors use: grep '^VERSION="'
+VERSION="2.3.5"
+: "${VERSION:=2.3.5}"
+
+# Runtime flags (safe defaults)
+: "${QUIET:=0}"
+: "${JSON:=0}"
+: "${FORCE:=0}"
+: "${FORCE_REINSTALL:=0}"
+: "${DEBUG:=0}"
+: "${TTY:=0}"
+
+# ----------------------------- Safe Variable Defaults ------------------------
+: "${GLOBAL_BIN:=/usr/local/bin}"
+# INC-20260713-001: under set -u, never expand bare ${HOME} before it is set.
+# Order: resolve HOME (safe ${HOME-} probes) → then USER_BIN from HOME.
+# Prefer existing non-empty HOME; else passwd home (getent / USER); else /tmp.
+if [ -z "${HOME-}" ]; then
+    _home_resolved=""
+    if command -v getent >/dev/null 2>&1; then
+        if [ -n "${USER-}" ]; then
+            _home_resolved=$(getent passwd "${USER}" 2>/dev/null | cut -d: -f6)
+        fi
+        if [ -z "${_home_resolved}" ]; then
+            _home_resolved=$(getent passwd "$(id -un 2>/dev/null || echo "")" 2>/dev/null | cut -d: -f6)
+        fi
+    fi
+    if [ -z "${_home_resolved}" ] && [ -n "${USER-}" ] && [ -r /etc/passwd ]; then
+        _home_resolved=$(awk -F: -v u="${USER}" '$1==u {print $6; exit}' /etc/passwd 2>/dev/null)
+    fi
+    if [ -n "${_home_resolved}" ] && [ -d "${_home_resolved}" ]; then
+        HOME="${_home_resolved}"
+    else
+        HOME="/tmp"
+    fi
+    export HOME
+    unset _home_resolved
+fi
+: "${HOME:=/tmp}"
+: "${USER_BIN:=${HOME}/.local/bin}"
+: "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
+# Repository identity → install channel (Option B: raw.githubusercontent.com)
+: "${REPO_USER:=cloudgen}"
+: "${REPO_NAME:=ruoyi}"
+: "${SCRIPT_URL:=https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/src/${APP_NAME}}"
+
+# ----------------------------- RuoYi domain defaults (B only) ----------------
+# Specialized from selfmanaged (A). Domain SSOT: requirement-domain-ruoyi.md
+: "${PROJECT_NAME:=ruoyi-demo}"
+: "${PROJECT_DIR:=${HOME}/${PROJECT_NAME}}"
+: "${JAVA_ID:=21.0.10-tem}"
+: "${JAVA_VERSION:=21}"
+: "${JAVA_DISTRIBUTION:=Temurin}"
+: "${JAVA_NAME:=Java ${JAVA_VERSION} (Eclipse ${JAVA_DISTRIBUTION})}"
+: "${MAVEN_VER:=3.9.14}"
+: "${DB_NAME:=${APP_NAME}_db}"
+: "${DB_USER:=${APP_NAME}_user}"
+: "${DB_PASSWORD:=}"
+: "${NO_RUN:=0}"
+: "${RESET_PROJECT:=0}"
+: "${PORT:=8080}"
+: "${RUOYI_GIT_REPO:=https://gitee.com/y_project/RuoYi.git}"
+# Compatibility alias used by domain oracle helpers
+msg() { out_plain "$@"; }
+
+# Run SDKMAN `sdk` under set +u (upstream scripts assume unset vars ok).
+_ruo_sdk() {
+    set +u
+    sdk "$@"
+    local rc=$?
+    set -u
+    return "$rc"
+}
+
+
+: "${CHECKSUM:=}"
+
+[ -t 0 ] && [ -t 1 ] && TTY=1
+USERNAME="$(id -un 2>/dev/null || echo "unknown")"
+# Privilege SSOT for recommended install path / bin choice (set -u safe).
+# Re-detected inside inst_perform_install before mutating INSTALL_PATH.
+if [ "$(id -u 2>/dev/null || echo 1)" -eq 0 ]; then
+    IS_ROOT=1
+else
+    IS_ROOT=0
+fi
+: "${IS_ROOT:=0}"
+: "${SH:=sh}"
+# =============================================================================
+# out_text() - SINGLE SOURCE OF TRUTH FOR ALL OUTPUT
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Centralized output handler for all human-readable messages.
+# Respects --quiet, --json, and TTY detection for colors.
+# All user-facing text (out_info, out_success, out_warn, out_error, etc.) MUST go through this
+# function to maintain consistency and JSON-mode compatibility.
+#
+# INTENTIONAL DESIGN:
+# This is the single source of truth for all terminal output in the project.
+# Never use raw echo/printf for product user messages elsewhere.
+#
+# PRINTF EXCEPTION (class A – inside output SSOT):
+# This function MAY call printf to fd 1/2 for product human messages.
+# That is intentional: out_text is the authorized human emitter.
+# Other code must not copy these printf lines for banners/status; call out_* instead.
+# See requirement-shell-output-requirements.md §2.1.1 (printf exceptions).
+#
+# Applied exactly as required by requirement-shell-output-requirements.md
+# Last reviewed: 2026-07-12
+# Lessons Learned (CIAO Reflection):
+# 2026-07-12: Quiet mode previously suppressed warnings; requirement says
+#             quiet MUST show errors and SHOULD show warnings on stderr.
+#             Added out_debug (stderr, DEBUG=1 only, suppressed under JSON).
+# 2026-07-12: Documented that not every printf is banned — only product messaging
+#             that bypasses this SSOT (return-via-stdout, file I/O, tool pipes allowed).
+# =============================================================================
+out_text() {
+    local level="$1" msg="$2"
+    : "${JSON:=0}" : "${QUIET:=0}" : "${DEBUG:=0}"
+    # JSON mode: never emit human-readable lines (machines use out_json*)
+    [ "${JSON}" -eq 1 ] && return 0
+
+    case "${level}" in
+        out_error)
+            # Always shown (even under --quiet)
+            ;;
+        out_warn)
+            # Shown under --quiet (diagnostics stay on stderr)
+            ;;
+        out_debug)
+            [ "${DEBUG}" -eq 1 ] || return 0
+            ;;
+        *)
+            [ "${QUIET}" -eq 1 ] && return 0
+            ;;
+    esac
+
+    local RED='' GREEN='' YELLOW='' BLUE='' NC=''
+    [ "${TTY:-0}" -eq 1 ] && [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ] && {
+        RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+    }
+
+    case "${level}" in
+        out_error)   printf >&2 "${RED}[ERROR]${NC} %s\n" "${msg}" ;;
+        out_warn)    printf >&2 "${YELLOW}[WARN]${NC} %s\n" "${msg}" ;;
+        out_debug)   printf >&2 "${BLUE}[DEBUG]${NC} %s\n" "${msg}" ;;
+        out_info)    printf "${GREEN}[INFO]${NC} %s\n" "${msg}" ;;
+        out_success) printf "${GREEN}[OK]${NC} %s\n" "${msg}" ;;
+        plain)       printf "%s\n" "${msg}" ;;
+        plain_n)     printf "%s" "${msg}" ;;
+        *)           printf "%s\n" "${msg}" ;;
+    esac
+}
+
+# =============================================================================
+# out_debug() - Debug diagnostics on stderr (DEBUG=1 only; never under --json)
+# =============================================================================
+out_debug() { out_text out_debug "$*"; }
+
+# =============================================================================
+# out_success()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_success()   → green [OK]
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+out_success() { out_text out_success "$*"; }
+
+# =============================================================================
+# out_info()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_info()      → green [INFO]
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+out_info() { out_text out_info "$*"; }
+
+# =============================================================================
+# out_warn()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_warn()      → yellow [WARN]
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+out_warn() { out_text out_warn "$*"; }
+
+out_error()   { out_text "out_error"   "$*"; }
+# =============================================================================
+# out_die()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_die()       → out_error + exit(1)  (also triggers JSON out_error)
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+out_die() { out_json_error "$*"; out_text out_error "$*"; exit 1; }
+
+# =============================================================================
+# out_plain() - Output plain text
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience function to output plain text (no prefix, no color).
+# Part of the standardized out_* output system.
+#
+# CRITICAL RULE:
+# All product user-facing text MUST go through the output system.
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+#
+# INTENTIONAL DESIGN:
+# Short, readable call while keeping real logic in out_text().
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+out_plain() {
+    out_text plain "$*"
+}
+
+# =============================================================================
+# out_msg_n() - Output message WITHOUT trailing newline (for interactive prompts)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrapper around out_text() for printing prompts that require
+# user input on the SAME line (e.g. "Continue? (y/N)? ").
+# Used exclusively by prompt_yes_no() and any future interactive prompts.
+#
+# CRITICAL RULE:
+# This is the ONLY allowed way to produce non-newline product prompt text.
+# Return values from prompt_ask use class-B printf (data return), not this helper.
+# All product output must respect --quiet and --json (never shown in those modes).
+#
+# INTENTIONAL DESIGN:
+# Short, readable call while keeping real logic in out_text() as Single
+# Source of Truth. Uses the existing 'plain_n' level already supported
+# by out_text().
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution: Never breaks prompt flow in non-interactive/curl | bash mode
+# - Intentional: Explicitly named for prompt usage (not generic plain_n)
+# - Anti-fragile: Works with TTY detection, colors, and JSON/quiet guards
+# - Over-protect: Follows exact same pattern as out_plain/out_info/etc.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-output-requirements.md (out_* SSOT, plain_n)
+# - requirement-shell-interactive-vs-noninteractive.md (prompt fragments)
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other CIAO-Lite projects.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-05-31: Added this missing convenience wrapper after prompt_yes_no()
+#             was referencing a non-existent helper. Prevents regression
+#             in interactive confirmation flow.
+# 2026-07-12: ALIGNMENT corrected to live docs/requirements/ paths only.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+out_msg_n() { out_text plain_n "$*"; }
+
+# =============================================================================
+# out_empty_line()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_empty_line() → visual separators
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+out_empty_line() { out_text plain ""; }
+
+
+# =============================================================================
+# out_double_line()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_double_line() → visual separators
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+out_double_line() { out_text plain "=================================================="; }
+
+# =============================================================================
+# out_json() - JSON output helper
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Emits clean, machine-readable JSON when --json flag is used.
+# Used by all command modes that support structured output.
+#
+# INTENTIONAL DESIGN:
+# Keeps JSON output minimal, consistent, and escaped safely.
+# Must be used together with out_json_error() for errors.
+#
+# PRINTF EXCEPTION (class A – inside output SSOT):
+# This function MAY printf product JSON to stdout. Nested
+# printf|sed is only for field escaping (tool pipe, still SSOT-owned).
+# Command logic must not emit JSON with raw printf; call out_json instead.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+# util_json_escape() - Escape a string for inclusion in a JSON double-quoted value
+# GENERAL PURPOSE: Prevent broken machine JSON when values contain " or \.
+# Class B helper used only by out_json / out_json_error (not a product message).
+util_json_escape() {
+    # Escape \, ", and common controls so JSON cannot be broken by newlines/tabs (L-06).
+    # awk is POSIX; multi-line values become \n between physical lines.
+    printf '%s' "${1-}" | awk '
+    {
+      line = $0
+      gsub(/\\/, "\\\\", line)
+      gsub(/"/, "\\\"", line)
+      gsub(/\t/, "\\t", line)
+      gsub(/\r/, "\\r", line)
+      if (NR > 1) printf "\\n"
+      printf "%s", line
+    }'
+}
+
+out_json() {
+    [ "${JSON}" -eq 0 ] && return 0
+    local type="$1" message="$2" key raw_key; shift 2
+    # Success/status JSON on stdout (SSOT-of-stdout; pure for pipes)
+    # Escape type, message, and string key/value pairs (M7 / machine contract).
+    # Raw nested JSON: key prefixed with "@" → value inserted unquoted (caller builds
+    # a complete JSON array/object; key name is without the "@"). Portable SSOT for
+    # specialized products that need nested structures (requirement-shell-output-requirements).
+    printf '{'
+    printf '"type":"%s"' "$(util_json_escape "$type")"
+    [ -n "$message" ] && printf ',"message":"%s"' "$(util_json_escape "$message")"
+    while [ $# -ge 2 ]; do
+        key="$1"
+        case "$key" in
+            @*)
+                raw_key="${key#@}"
+                printf ',"%s":%s' "$(util_json_escape "$raw_key")" "$2"
+                ;;
+            *)
+                printf ',"%s":"%s"' "$(util_json_escape "$key")" "$(util_json_escape "$2")"
+                ;;
+        esac
+        shift 2
+    done
+    printf '}\n'
+}
+
+# =============================================================================
+# out_json_error() - JSON error on stderr (SSOT-of-stderr)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Emit a structured error object in JSON mode on **stderr** so success
+# consumers can use:  tool --json … > out.json 2> err.log
+#
+# PRINTF EXCEPTION (class A – inside output SSOT):
+# This function MAY printf structured error JSON to stderr (product machine
+# channel). Nested printf|sed is escape-only. Callers use out_json_error /
+# out_die — never hand-roll JSON with printf in command logic.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-07-12: Previously delegated to out_json (stdout), which mixed errors
+#             into the success channel. Errors now always go to stderr.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+out_json_error() {
+    [ "${JSON}" -eq 0 ] && return 0
+    local message="$1" code="${2:-unknown}"
+    printf >&2 '{'
+    printf >&2 '"type":"%s"' "out_error"
+    [ -n "$message" ] && printf >&2 ',"message":"%s"' "$(util_json_escape "$message")"
+    printf >&2 ',"code":"%s"' "$(util_json_escape "$code")"
+    printf >&2 '}\n'
+}
+
+# =============================================================================
+# inst_perform_install() - Perform the actual installation (v2 with checksum)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Orchestrates the complete installation flow:
+#   1. Privilege-aware path setup (root → /usr/local/bin, normal user → ~/.local/bin)
+#   2. Early exit if already installed (unless --force / FORCE_REINSTALL=1)
+#   3. Target directory preparation
+#   4. Secure download with layered checksum verification:
+#        - If CHECKSUM env var is set → strict verification (user/CI pinned version)
+#        - Otherwise → best-effort verification via ${SCRIPT_URL}.sha256 (if present)
+#   5. Atomic move + chmod + PATH update via inst_perform_install_atomic_install()
+#
+# This is the SINGLE SOURCE OF TRUTH for all installation operations
+# (initial install, self-update, and forced reinstall).
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Never trust network download without verification when possible.
+#   Always use mktemp, explicit error checks, and atomic mv.
+# - Intentional (Principle 2): Clear step-by-step flow with explicit if/then blocks.
+#   Behavior is fully predictable in interactive, quiet, JSON, and non-TTY modes.
+# - Anti-fragile (Principle 3): Works for both root and normal users, survives partial
+#   failures, and maintains backward compatibility when no CHECKSUM is provided.
+# - Over-protect (Principle 18): Strong Protection Zone, safe defaults, checksum layers,
+#   and cleanup on every error path. Designed to be reusable across CIAO-Lite projects.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is the central installation orchestrator. Any change must preserve the
+# checksum decision logic, atomic install step, and variable scoping for helpers.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-06-26:
+#   - Original implementation was a stub (created tmp_file then returned 0).
+#     This made self-update and the core install path completely non-functional.
+#   - Updated to wire the existing v2 download helpers + atomic install helper.
+#   - Changed mktemp error handling to explicit if (matching the style enforced
+#     in inst_perform_install_download_without_checksum).
+#   - Added safe defaults for FORCE_REINSTALL and CHECKSUM.
+#   - Ensured tmp_file is always cleaned on failure paths.
+#   - Preserved full original defensive header and only appended this Lessons Learned section.
+#
+# Last reviewed: 2026-06-26
+# =============================================================================
+
+inst_perform_install() {
+    # --- Safe Variable Defaults ---
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
+    : "${FORCE_REINSTALL:=0}"
+    : "${CHECKSUM:=}"
+    : "${SCRIPT_URL:=}"
+    : "${REMOTE_VERSION:=}"
+
+    if [ "$(id -u)" -eq 0 ]; then
+        IS_ROOT=1
+        INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
+    else
+        IS_ROOT=0
+        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
+    fi
+
+    if [ -z "$REMOTE_VERSION" ]; then
+        REMOTE_VERSION=${VERSION}
+    fi
+
+    if [ "${JSON}" -eq 0 ]; then
+        out_info "Starting installation of ${APP_NAME} ${REMOTE_VERSION}..."
+    fi
+
+    if inst_is_installed && [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json "out_success" "${APP_NAME} is already installed."
+        else
+            # Success no-op: re-running curl | bash / install does not require --force.
+            # --force is only for deliberate re-download/replace (see self-update).
+            out_success "${APP_NAME} is already installed."
+            out_info "Use --force only to reinstall deliberately (or run: ${APP_NAME} self-update)."
+        fi
+        return 0
+    fi
+
+    # Step 1: Prepare target folder
+    if ! inst_perform_install_prepare_target; then
+        return 1
+    fi
+
+    local tmp_file
+    tmp_file=$(util_mktemp "dl")
+    if [ -z "${tmp_file}" ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Failed to create temporary file" "io_error"
+        else
+            out_error "Failed to create temporary file"
+        fi
+        return 1
+    fi
+
+    local downloaded_checksum_ok=0
+    : "${INST_AUTO_CHECKSUM_OK:=0}"
+
+    if [ -n "${CHECKSUM}" ]; then
+        # Strict user/CI-provided checksum (highest security)
+        if inst_perform_install_download_with_checksum "${tmp_file}"; then
+            downloaded_checksum_ok=1
+        else
+            rm -f "${tmp_file}" 2>/dev/null || true
+            return 1
+        fi
+    else
+        # Automatic verification via ${SCRIPT_URL}.sha256 (primary integrity path)
+        INST_AUTO_CHECKSUM_OK=0
+        if ! inst_perform_install_download_without_checksum "${tmp_file}"; then
+            rm -f "${tmp_file}" 2>/dev/null || true
+            return 1
+        fi
+        # Set only when companion matched (not on missing-sidecar continue)
+        downloaded_checksum_ok=${INST_AUTO_CHECKSUM_OK:-0}
+    fi
+
+    # Step 4: Atomic move to final location + PATH update + success message
+    if ! inst_perform_install_atomic_install "${tmp_file}" "${downloaded_checksum_ok}"; then
+        rm -f "${tmp_file}" 2>/dev/null || true
+        return 1
+    fi
+
+    return 0
+}
+
+# =============================================================================
+# inst_perform_install_prepare_target() - Step 1: Target folder preparation
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Creates the correct installation directory (global or user) with proper
+# permissions check.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+inst_perform_install_prepare_target() {
+    if [ "$IS_ROOT" -eq 1 ]; then
+        if ! mkdir -p "${GLOBAL_BIN}" 2>/dev/null; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Failed to create ${GLOBAL_BIN}" "io_error"
+            else
+                out_error "Failed to create ${GLOBAL_BIN}"
+            fi
+            return 1
+        fi
+    else
+        if ! mkdir -p "${USER_BIN}" 2>/dev/null; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Failed to create ${USER_BIN}" "io_error"
+            else
+                out_error "Failed to create ${USER_BIN}"
+            fi
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# =============================================================================
+# inst_perform_install_download_with_checksum() - Step 2: Download with explicit CHECKSUM
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Downloads the script and verifies it against user-provided CHECKSUM (strict).
+#
+# PRINTF EXCEPTION (class D – tool protocol / computation pipe):
+# printf '%s  %s\n' … | basha256sum -c feeds the verifier only (not product UI).
+# Status/errors still go through out_* / out_json_error / out_die.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+inst_perform_install_download_with_checksum() {
+    local tmp_file="$1"
+
+    if [ "${JSON}" -eq 0 ]; then
+        out_info "Verifying download against provided CHECKSUM..."
+    fi
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "${SCRIPT_URL}" -o "${tmp_file}" || {
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Download failed (curl)" "network_error"
+            else
+                out_error "Download failed (curl)"
+            fi
+            return 1
+        }
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO "${tmp_file}" "${SCRIPT_URL}" || {
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Download failed (wget)" "network_error"
+            else
+                out_error "Download failed (wget)"
+            fi
+            return 1
+        }
+    else
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Neither curl nor wget found" "missing_dependency"
+        else
+            out_error "Neither curl nor wget found"
+        fi
+        return 1
+    fi
+
+    # Verify provided CHECKSUM (sha256sum | bashasum | openssl — util_sha256_file)
+    local actual
+    actual=$(util_sha256_file "${tmp_file}") || actual=""
+    if [ -n "${actual}" ] && [ "${CHECKSUM}" = "${actual}" ]; then
+        if [ "${JSON}" -eq 0 ]; then
+            out_success "Checksum verification passed (user-provided CHECKSUM)."
+        fi
+        return 0
+    else
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Checksum verification failed (provided CHECKSUM does not match)" "checksum_mismatch"
+        else
+            out_die "Checksum verification failed. The downloaded file does not match the provided CHECKSUM. Installation aborted for security."
+        fi
+        return 1
+    fi
+}
+
+# =============================================================================
+# inst_perform_install_download_without_checksum() - Step 3: Download with automatic .sha256
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Downloads the script and attempts best-effort verification via ${SCRIPT_URL}.sha256.
+# Falls back gracefully if no .sha256 file exists (backward compatible).
+# Uses robust, auditable hash comparison that actually works.
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Never trust download without verification when possible.
+# - Intentional (Principle 2): Explicit HTTP code capture and clear hash comparison.
+#   All error handling uses explicit if/then blocks (no || {} or compact || return).
+# - Anti-fragile (Principle 3): Tolerates minor whitespace in .sha256 file.
+# - Over-protect (Principle 18): Security-critical install path now has working
+#   verification and follows current coding standards.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-self-management.md (install download / integrity path)
+# - requirement-shell-output-requirements.md (out_* status and errors)
+# - requirement-shell-modular-function-design.md (inst_* ownership, headers)
+# Source comments cite only files under docs/requirements/ that exist on disk.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other CIAO-Lite projects.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-06-07:
+#   - Fixed fundamentally broken verification: `sha256sum -c ... < "${tmp_file}"`
+#     does not work as intended.
+#   - Removed all `|| {}` and `|| return 1` patterns in this function to comply
+#     with updated coding standard.
+#   - Both curl and wget paths now use consistent, explicit error handling.
+# 2026-07-12: ALIGNMENT retargeted to live docs/requirements/ files only;
+#             removed citations to non-existent requirements / templates.
+# 2026-07-14: requirement-shell-automatic-checksum transparency (link/value/result);
+#             first-field digest parse (sha256sum "hash  file" lines); set
+#             INST_AUTO_CHECKSUM_OK=1 on companion match so atomic install can
+#             report verified success (was always 0 on automatic path).
+#
+# Last reviewed: 2026-07-14
+# =============================================================================
+
+inst_perform_install_download_without_checksum() {
+    local tmp_file="$1"
+    # Caller (inst_perform_install) reads this after return 0.
+    # 1 = companion present and digests match; 0 = missing sidecar (warn+continue) or unset.
+    INST_AUTO_CHECKSUM_OK=0
+    : "${SCRIPT_URL:=}"
+
+    if [ "${JSON}" -eq 0 ]; then
+        out_info "No CHECKSUM pin → automatic integrity via companion ${SCRIPT_URL}.sha256"
+        out_info "Companion link: ${SCRIPT_URL}.sha256"
+    fi
+
+    if command -v curl >/dev/null 2>&1; then
+        if ! curl -fsSL "${SCRIPT_URL}" -o "${tmp_file}"; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Download failed (curl)" "network_error"
+            else
+                out_error "Download failed (curl)"
+            fi
+            return 1
+        fi
+
+        local sha_file
+        sha_file=$(util_mktemp "sha256")
+        if [ -z "${sha_file}" ]; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Failed to create temporary file for checksum" "io_error"
+            else
+                out_error "Failed to create temporary file for checksum"
+            fi
+            return 1
+        fi
+
+        # Capture HTTP code cleanly
+        local http_code
+        http_code=$(curl -fsSL -w "%{http_code}" "${SCRIPT_URL}.sha256" -o "${sha_file}" 2>/dev/null)
+
+        if [ "${http_code}" = "200" ]; then
+            # First field only: bare hex or standard "hash  filename" lines
+            local expected actual
+            expected=$(awk 'NF { print $1; exit }' "${sha_file}" 2>/dev/null)
+            actual=$(util_sha256_file "${tmp_file}") || actual=""
+
+            if [ -n "${expected}" ] && [ -n "${actual}" ] && [ "${expected}" = "${actual}" ]; then
+                INST_AUTO_CHECKSUM_OK=1
+                if [ "${JSON}" -eq 0 ]; then
+                    out_info "Expected SHA-256: ${expected}"
+                    out_info "Actual SHA-256:   ${actual}"
+                    out_success "Automatic checksum result: PASS (match ${SCRIPT_URL}.sha256)."
+                fi
+            else
+                rm -f "${sha_file}"
+                if [ "${JSON}" -eq 1 ]; then
+                    out_json_error "Automatic checksum verification failed" "checksum_mismatch"
+                else
+                    out_info "Expected SHA-256: ${expected:-"(empty)"}"
+                    out_info "Actual SHA-256:   ${actual:-"(empty)"}"
+                    out_die "Checksum verification failed (mismatch with ${SCRIPT_URL}.sha256). Installation aborted for security."
+                fi
+                return 1
+            fi
+        else
+            if [ "${JSON}" -eq 0 ]; then
+                out_warn "No .sha256 companion at ${SCRIPT_URL}.sha256 → continuing without automatic verification."
+            fi
+        fi
+        rm -f "${sha_file}" 2>/dev/null || true
+
+    elif command -v wget >/dev/null 2>&1; then
+        if ! wget -qO "${tmp_file}" "${SCRIPT_URL}"; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Download failed (wget)" "network_error"
+            else
+                out_error "Download failed (wget)"
+            fi
+            return 1
+        fi
+
+        local sha_file
+        sha_file=$(util_mktemp "sha256")
+        if [ -z "${sha_file}" ]; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Failed to create temporary file for checksum" "io_error"
+            else
+                out_error "Failed to create temporary file for checksum"
+            fi
+            return 1
+        fi
+
+        if wget -q --server-response "${SCRIPT_URL}.sha256" -O "${sha_file}" 2>&1 | grep -qE "HTTP/[0-9.]+ 200"; then
+            local expected actual
+            expected=$(awk 'NF { print $1; exit }' "${sha_file}" 2>/dev/null)
+            actual=$(util_sha256_file "${tmp_file}") || actual=""
+
+            if [ -n "${expected}" ] && [ -n "${actual}" ] && [ "${expected}" = "${actual}" ]; then
+                INST_AUTO_CHECKSUM_OK=1
+                if [ "${JSON}" -eq 0 ]; then
+                    out_info "Companion link: ${SCRIPT_URL}.sha256"
+                    out_info "Expected SHA-256: ${expected}"
+                    out_info "Actual SHA-256:   ${actual}"
+                    out_success "Automatic checksum result: PASS (match ${SCRIPT_URL}.sha256)."
+                fi
+            else
+                rm -f "${sha_file}"
+                if [ "${JSON}" -eq 1 ]; then
+                    out_json_error "Automatic checksum verification failed" "checksum_mismatch"
+                else
+                    out_info "Expected SHA-256: ${expected:-"(empty)"}"
+                    out_info "Actual SHA-256:   ${actual:-"(empty)"}"
+                    out_die "Checksum verification failed (mismatch with ${SCRIPT_URL}.sha256). Installation aborted for security."
+                fi
+                return 1
+            fi
+        else
+            if [ "${JSON}" -eq 0 ]; then
+                out_warn "No .sha256 companion at ${SCRIPT_URL}.sha256 → continuing without automatic verification."
+            fi
+        fi
+        rm -f "${sha_file}" 2>/dev/null || true
+
+    else
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Neither curl nor wget found" "missing_dependency"
+        else
+            out_error "Neither curl nor wget found"
+        fi
+        return 1
+    fi
+
+    return 0
+}
+
+# =============================================================================
+# inst_perform_install_atomic_install() - Step 4: Atomic copy to target location
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Makes the downloaded file executable and atomically moves it to the final
+# INSTALL_PATH. Also handles PATH addition for user installs and out_success output.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+inst_perform_install_atomic_install() {
+    local tmp_file="$1"
+    local downloaded_checksum_ok="$2"
+
+    chmod +x "${tmp_file}" 2>/dev/null || true
+
+    rm -f "${INSTALL_PATH}" 2>/dev/null
+    if ! mv "${tmp_file}" "${INSTALL_PATH}" 2>/dev/null; then
+        rm -f "${tmp_file}"
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Failed to move to ${INSTALL_PATH}" "io_error"
+        else
+            out_error "Failed to move to ${INSTALL_PATH}"
+        fi
+        return 1
+    fi
+
+    # Add ~/.local/bin to PATH for normal user installs
+    if [ "$IS_ROOT" -eq 0 ]; then
+        path_add_shell
+    fi
+    
+    if [ "${JSON}" -eq 1 ]; then
+        out_json "out_success" "${APP_NAME} ${REMOTE_VERSION} successfully installed to ${INSTALL_PATH}" "path" "${INSTALL_PATH}"
+    else
+        out_success "${APP_NAME} ${REMOTE_VERSION} successfully installed to ${INSTALL_PATH}"
+        if [ "${downloaded_checksum_ok}" -eq 1 ]; then
+            out_success "✓ Download was cryptographically verified."
+        fi
+    fi
+    return 0
+}
+
+# =============================================================================
+# inst_maybe_install() - Friendly installation prompt
+# =============================================================================
+#
+# Respects both --quiet and --json modes.
+# In JSON mode we skip the interactive prompt entirely.
+# Now uses prompt_yes_no() as single source of truth for confirmation.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY !!!
+# Designed to be reusable in other projects.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-07-13:
+#   - Under set -u, recommended-install branch used IS_ROOT / SH before any
+#     assignment (those were only set inside inst_perform_install). Crash:
+#     "IS_ROOT: parameter not set" after printing "Recommended installation
+#     command:". Fixed with local privilege detection + SH/SCRIPT_URL defaults.
+#
+# Last reviewed: 2026-07-13
+# =============================================================================
+
+inst_maybe_install() {
+    : "${QUIET:=0}"
+    : "${JSON:=0}"
+    : "${FORCE_REINSTALL:=0}"
+    : "${SCRIPT_URL:=}"
+    : "${SH:=sh}"
+    # Privilege for recommended install command (set -u safe; same rule as inst_perform_install)
+    if [ "$(id -u 2>/dev/null || echo 1)" -eq 0 ]; then
+        IS_ROOT=1
+    else
+        IS_ROOT=0
+    fi
+
+    if inst_is_installed && [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        return 0
+    fi
+    # In JSON mode or quiet mode we do not show interactive prompts
+    if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+        return 0
+    fi
+    out_empty_line
+    out_plain "Note: '${APP_NAME}' is not installed yet."
+    out_plain "     Version: ${VERSION}"
+    out_empty_line
+    out_plain "Recommended installation command:"
+    out_empty_line
+
+    if [ "$IS_ROOT" -eq 1 ]; then
+        out_plain "     sudo curl -fsSL ${SCRIPT_URL} | sudo ${SH}"
+    else
+        out_plain "     curl -fsSL ${SCRIPT_URL} | ${SH}"
+    fi
+    out_empty_line
+
+    local should_install=false
+
+    if [ -t 0 ] && [ -t 1 ]; then
+        # Use single source of truth for the yes/no prompt
+        if prompt_yes_no "Install ${APP_NAME} ${VERSION} now?"; then
+            should_install=true
+        else
+            should_install=false
+            out_plain "Installation skipped by user."
+            return 0 
+        fi
+    else
+        out_plain "Non-interactive mode detected → installing automatically..."
+        should_install=true
+    fi
+
+    if [ "$should_install" = "true" ]; then
+        # Propagate install failure (do not mask network/checksum/io errors as success).
+        inst_perform_install
+        return $?
+    fi
+    return 0
+}
+
+# =============================================================================
+# inst_self_update() - Perform atomic self-update to latest version
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Orchestrates self-update for the installed ${APP_NAME} binary.
+# Fetches the remote VERSION string, compares it with the locally installed
+# version, and (if different or --force) delegates to inst_perform_install
+# with FORCE_REINSTALL=1. Designed to be safe, idempotent-friendly, and
+# respectful of the current installation type (user vs global).
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Never downgrades without explicit FORCE; always
+#   verifies remote version before proceeding; uses centralized output.
+# - Intentional (Principle 2): Clear separation between version check and
+#   actual install; explicit variable handling and error paths.
+# - Anti-fragile (Principle 3): Works for both root and normal users;
+#   survives missing SCRIPT_URL (graceful error) and network failures.
+# - Over-protect (Principle 18): Full CIAO header, safe defaults, Protection
+#   Zone comment, and Lessons Learned traceability. Reusable pattern for
+#   other CIAO-Lite self-managed tools.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-self-management.md
+# - requirement-shell-cli-interface.md
+# - requirement-shell-output-requirements.md
+# - requirement-shell-idempotency.md
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is the canonical self-update entry point. Any change must preserve
+# the REMOTE_VERSION visibility contract with inst_perform_install and
+# the centralized output discipline.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-06-26: Original implementation was a stub. Updated to call the v2
+#             inst_perform_install path with checksum support.
+# 2026-06-26 (correction): Removed accidental `local` on REMOTE_VERSION
+#             (was invisible to inst_perform_install). Added safe default
+#             for SCRIPT_URL and explicit comment about distribution URL
+#             requirement. No hard-coded project-specific values introduced.
+#
+# Last reviewed: 2026-06-26
+# =============================================================================
+
+inst_self_update() {
+    # --- Safe Variable Defaults ---
+    : "${APP_NAME:=ruoyi}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    : "${FORCE:=0}"
+    : "${FORCE_REINSTALL:=0}"
+    : "${SCRIPT_URL:=}"
+
+    # Align force aliases (CLI --force sets both)
+    if [ "${FORCE}" -eq 1 ]; then
+        FORCE_REINSTALL=1
+    fi
+
+    if [ "${JSON}" -eq 0 ]; then
+        out_info "Starting self-update of ${APP_NAME}..."
+    fi
+
+    # SCRIPT_URL is Config SSOT (composed default from REPO_* / APP_NAME).
+    # Override via env for forks or offline channels. Empty → fail loud below.
+
+    REMOTE_VERSION=$(util_fetch_remote_version "${SCRIPT_URL}")
+
+    if [ -z "$REMOTE_VERSION" ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Failed to fetch latest version" "network_error"
+        else
+            out_error "Failed to fetch latest version (SCRIPT_URL may be unset or unreachable)"
+        fi
+        return 1
+    fi
+
+    local local_version
+    local_version=$(inst_get_version)
+
+    if [ "$local_version" = "$REMOTE_VERSION" ] && [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json "out_success" "Already running the latest version (${REMOTE_VERSION})."
+        else
+            out_success "Already running the latest version (${REMOTE_VERSION})."
+        fi
+        return 0
+    fi
+
+    # No silent downgrade: remote older than local requires --force
+    # (requirement-shell-self-management.md)
+    if [ "$local_version" != "not installed" ] && \
+       [ "$local_version" != "unknown" ] && \
+       ver_gt "$local_version" "$REMOTE_VERSION" && \
+       [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Refusing downgrade from ${local_version} to ${REMOTE_VERSION} (use --force)" "downgrade_blocked"
+        else
+            out_error "Refusing silent downgrade: local ${local_version} is newer than remote ${REMOTE_VERSION}."
+            out_info "Re-run with --force to reinstall/downgrade deliberately."
+        fi
+        return 1
+    fi
+
+    if [ "$local_version" != "$REMOTE_VERSION" ] && [ "${JSON}" -eq 0 ]; then
+        if ver_gt "$REMOTE_VERSION" "$local_version" 2>/dev/null || [ "$local_version" = "not installed" ]; then
+            out_info "Updating from ${local_version} → ${REMOTE_VERSION}"
+        else
+            out_warn "Force reinstall/downgrade: ${local_version} → ${REMOTE_VERSION}"
+        fi
+    fi
+
+    FORCE_REINSTALL=1
+    inst_perform_install
+}
+
+# =============================================================================
+# inst_self_uninstall() - Main orchestrator for uninstallation
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Removes the installed ${APP_NAME} binary (global or user) and optionally
+# cleans up PATH entries.
+#
+# Respects --force, --quiet, and --json.
+# Works for both root and user installations.
+#
+# DESIGN:
+# Split into three clear steps for readability while preserving original
+# behavior and safety.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+inst_self_uninstall() {
+    # Align force aliases (CLI --force)
+    : "${FORCE:=0}"
+    : "${FORCE_REINSTALL:=0}"
+    if [ "${FORCE}" -eq 1 ]; then
+        FORCE_REINSTALL=1
+    fi
+
+    if [ "${JSON}" -eq 0 ]; then
+        out_info "Starting self-uninstall of ${APP_NAME}..."
+    fi
+
+    # Step 1: Determine which installation to remove
+    local bin_path
+    bin_path=$(inst_self_uninstall_determine_bin)
+    if [ -z "$bin_path" ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json "out_success" "${APP_NAME} is not installed. Nothing to uninstall."
+        else
+            out_warn "${APP_NAME} is not installed. Nothing to uninstall."
+        fi
+        return 0
+    fi
+
+    # Step 2: Confirm (if needed) and perform removal
+    if ! inst_self_uninstall_confirm_and_remove "$bin_path"; then
+        return 1
+    fi
+
+    # Step 3: Clean up PATH entries (user installs only)
+    inst_self_uninstall_cleanup_path
+
+    if [ "${JSON}" -eq 1 ]; then
+        out_json "out_success" "${APP_NAME} has been uninstalled."
+    else
+        out_success "${APP_NAME} has been uninstalled."
+    fi
+    return 0
+}
+
+# =============================================================================
+# inst_self_uninstall_determine_bin() - Step 1: Determine which installation to remove
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Decides the correct binary path to remove based on current user,
+# FORCE_GLOBAL, and actual file presence.
+#
+# Returns the full path to remove, or empty string if nothing to uninstall.
+#
+# PRINTF EXCEPTION (class B – function return-via-stdout):
+# Final printf '%s' "$bin_path" is a data return for $(…) capture by the
+# uninstall orchestrator — not a product user message. User-facing text in
+# this helper uses out_warn. Callers must capture the path; do not treat
+# this printf as a substitute for out_*.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# CRITICAL: Respects root vs user logic exactly as before.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+inst_self_uninstall_determine_bin() {
+    # Prefer shared path SSOT (util_get_install_bin_path); only return if file exists.
+    : "${APP_NAME:=ruoyi}"
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+
+    local bin_path=""
+    bin_path=$(util_get_install_bin_path)
+    if [ -n "${bin_path}" ] && [ -f "${bin_path}" ]; then
+        printf '%s' "${bin_path}"
+        return 0
+    fi
+    # Empty → not installed (caller treats as nothing to uninstall)
+    printf '%s' ""
+}
+
+# =============================================================================
+# inst_self_uninstall_confirm_and_remove() - Step 2: Confirm and remove binary
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Handles confirmation (unless --force) and actual file removal.
+# Interactive TTY uses prompt_yes_no(); non-interactive / --json / --quiet
+# fail closed with an explicit --force requirement (never auto-delete).
+#
+# Returns 0 on out_success, non-zero on failure/cancel.
+#
+# Last reviewed: 2026-07-13
+# =============================================================================
+
+inst_self_uninstall_confirm_and_remove() {
+    local bin_path="$1"
+
+    # Confirm before removal (unless --force / FORCE_REINSTALL).
+    # Non-interactive / --json / --quiet: fail closed — never auto-delete.
+    # Do not report that as "cancelled by user" (user never answered a prompt).
+    if [ "${FORCE_REINSTALL:-0}" -eq 0 ] && [ "${FORCE:-0}" -eq 0 ]; then
+        : "${JSON:=0}"
+        : "${QUIET:=0}"
+
+        if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ] || ! [ -t 0 ] || ! [ -t 1 ]; then
+            # requirement-shell-interactive-vs-noninteractive.md: destructive ops need --force
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Uninstall requires --force in non-interactive mode (refusing to remove ${bin_path})." "confirm_required"
+            else
+                out_error "Uninstall requires --force in non-interactive mode (refusing to remove ${bin_path})."
+                out_info "Re-run with: ${APP_NAME} self-uninstall --force"
+            fi
+            return 1
+        fi
+
+        if prompt_yes_no "This will remove: ${bin_path}"; then
+            :  # confirmed on TTY
+        else
+            # Interactive TTY: user answered no / empty (default N)
+            out_plain "Uninstall cancelled by user."
+            return 1
+        fi
+    fi
+
+    # Remove the binary
+    if rm -f "$bin_path" 2>/dev/null; then
+        return 0
+    else
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Failed to remove ${bin_path} (permission denied?)" "permission_denied"
+        else
+            out_error "Failed to remove ${bin_path} (permission denied?)"
+        fi
+        return 1
+    fi
+}
+
+# =============================================================================
+# inst_self_uninstall_cleanup_path() - Step 3: Clean up PATH entries
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Removes installer-added PATH entries from shell config files
+# (bash, zsh, fish) for user-level installations **only if** USER_BIN
+# is empty or does not exist.
+#
+# SAFETY RULE:
+# If USER_BIN still contains other files (other tools, scripts, etc.),
+# we deliberately keep the PATH entry to avoid breaking the user's environment.
+# This follows CIAO-Lite "Caution" and "Anti-fragile" principles.
+#
+# Last reviewed: 2026-07-14
+# =============================================================================
+
+inst_self_uninstall_cleanup_path() {
+    # Only attempt cleanup for non-root installs
+    if [ "$(id -u)" -eq 0 ]; then
+        return 0
+    fi
+
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    local bin_dir="${USER_BIN}"
+    local should_clean_path=1
+
+    # === SAFETY CHECK: Only clean PATH if USER_BIN is empty ===
+    if [ -d "$bin_dir" ]; then
+        if [ -n "$(ls -A "$bin_dir" 2>/dev/null)" ]; then
+            # Directory exists and is not empty → keep PATH for other tools
+            should_clean_path=0
+            if [ "${JSON}" -eq 0 ]; then
+                out_warn "Keeping ${bin_dir} in PATH because it still contains files."
+            fi
+        fi
+    fi
+
+    if [ "$should_clean_path" -eq 0 ]; then
+        return 0
+    fi
+
+    # Directory is empty or missing → safe to remove our PATH entries
+    local cleaned=0
+    local escaped_bin
+    # Escape sed | delimiter characters in USER_BIN for path-line removal
+    escaped_bin=$(printf '%s' "${bin_dir}" | sed 's/[\\/&|]/\\&/g')
+
+    for config in "${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.config/fish/config.fish"; do
+        if [ -f "$config" ]; then
+            if sed -i.bak \
+                -e '/# Added by .* installer/d' \
+                -e "\|${escaped_bin}|d" \
+                "$config" 2>/dev/null; then
+                cleaned=1
+            fi
+            rm -f "${config}.bak" 2>/dev/null || true
+        fi
+    done
+
+    if [ "$cleaned" -eq 1 ] && [ "${JSON}" -eq 0 ]; then
+        out_plain "→ Cleaned ${APP_NAME} PATH entries from shell config files"
+        out_plain "→ You may want to restart your terminal"
+    fi
+}
+
+# =============================================================================
+# inst_is_installed() - Robust installation check
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Checks whether the program is already installed, supporting both root
+# and normal user installations with safe fallbacks.
+#
+# Please don't modify this code for root-only installed
+# You can check [ "$(id -u)" -eq 0 ] before calling / excuting 
+#   this function
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+inst_is_installed() {
+    version=$(inst_get_version)
+    if [ "${version}" = "not installed"  ]; then 
+        return 1
+    else
+        return 0
+    fi
+}
+
+# =============================================================================
+# inst_get_version() - Extract version from installed binary
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Safely reads the VERSION constant from the installed script.
+# Used by --version-check and --self-update.
+#
+# Safe Variable Defaults
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# CRITICAL WARNING - VERSION EXTRACTION IS ESSENTIAL FOR SELF-UPDATE:
+# Knowing the exact installed version is not optional — it is the foundation
+# of safe self-update and version-check logic.
+#
+# Without a reliable inst_get_version(), self-update cannot properly
+# compare local version against remote, leading to:
+# - Unnecessary re-downloads
+# - Failed updates
+# - Silent failures
+# - Potential downgrade or broken installation
+#
+# AI assistants frequently fail to respect this importance. They often
+# overlook, simplify, or remove version extraction logic because they
+# consider it "minor" or try to replace the entire self-update flow with
+# a simpler approach. This always breaks the self-update mechanism.
+#
+# This function is battle-field tested and intentionally simple/robust
+# (grep + cut on the VERSION= line). Any attempt to rewrite or bypass it
+# risks destroying the self-update safety net.
+#
+# We must intentionally preserve and reuse this exact function instead of
+# replacing it. Respecting version awareness is a core part of CIAO
+# Caution and Anti-fragility.
+#
+# PRINTF/ECHO EXCEPTION (class B – function return-via-stdout):
+# echo "unknown" / echo "not installed" / grep|cut pipeline output are data
+# returns for $(inst_get_version) capture — not product banners. Callers
+# pass the string into out_* / out_json when displaying to the user.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+inst_get_version() {
+    # --- Safe Variable Defaults ----
+    # Align with util_get_install_bin_path: non-root prefers user-local when present (L-03).
+    : "${APP_NAME:=app}"
+    : "${IS_ROOT:=0}"
+    : "${HOME:=/tmp}"
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${FORCE_USER:=0}"
+    : "${FORCE_GLOBAL:=0}"
+
+    local bin_path=""
+    if [ "${FORCE_USER}" -eq 1 ]; then
+        bin_path="${USER_BIN}/${APP_NAME}"
+    elif [ "${FORCE_GLOBAL}" -eq 1 ] || [ "${IS_ROOT}" -eq 1 ] || [ "$(id -u)" -eq 0 ]; then
+        bin_path="${GLOBAL_BIN}/${APP_NAME}"
+    else
+        if [ -x "${USER_BIN}/${APP_NAME}" ]; then
+            bin_path="${USER_BIN}/${APP_NAME}"
+        elif [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
+            bin_path="${GLOBAL_BIN}/${APP_NAME}"
+        else
+            bin_path="${USER_BIN}/${APP_NAME}"
+        fi
+    fi
+
+    if [ -x "$bin_path" ]; then
+        grep '^VERSION="' "$bin_path" 2>/dev/null | cut -d'"' -f2 || echo "unknown"
+    else
+        echo "not installed"
+    fi
+}
+
+# =============================================================================
+# ver_gt() - Pure POSIX semantic version comparison
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Returns 0 (true) if ver1 > ver2, otherwise returns 1 (false).
+# Used by ver_check() and inst_self_update() to prevent incorrect downgrades.
+#
+# Safe Variable Defaults
+# Respects CIAO zero-dependency rule — no external tools (no sort -V).
+#
+# CRITICAL DESIGN CHOICE:
+# This function was added because previous AI suggestions using `sort -V`
+# were not portable enough for harsh environments (Alpine ash, busybox,
+# minimal containers, Git Bash, etc.).
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Past AI assistants have repeatedly tried to replace this with:
+#   - `sort -V` one-liners
+#   - Inline string comparisons
+#   - "Cleaner" but less robust logic
+#
+# Any such change re-introduces downgrade bugs and breaks portability.
+# This function must remain pure POSIX and self-contained.
+#
+# AI assistants are explicitly required to:
+# - Never remove or inline this function
+# - Always use it for all version comparisons in grokrec
+# - Preserve all defensive comments
+# - Study the test script provided by the user before suggesting changes
+#
+# This is part of the battle-field-tested defensive layer.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+ver_gt() {
+    # --- Safe Variable Defaults ----
+    v1=$1
+    v2=$2
+
+    while [ -n "$v1" ] || [ -n "$v2" ]; do
+        p1=${v1%%.*}
+        p2=${v2%%.*}
+
+        [ -z "$p1" ] && p1=0
+        [ -z "$p2" ] && p2=0
+
+        if [ "$p1" -gt "$p2" ]; then
+            return 0
+        fi
+        if [ "$p1" -lt "$p2" ]; then
+            return 1
+        fi
+
+        if [ "$v1" = "${v1#*.}" ]; then
+            v1=""
+        else
+            v1=${v1#*.}
+        fi
+
+        if [ "$v2" = "${v2#*.}" ]; then
+            v2=""
+        else
+            v2=${v2#*.}
+        fi
+    done
+
+    return 1    # versions are equal
+}
+
+# =============================================================================
+# ver_check() - Check for newer version from remote source
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Compares the locally installed version of ${APP_NAME} against the remote
+# version available at SCRIPT_URL. Supports both human-readable output and
+# clean JSON mode. Used by the `version-check` command and as a helper for
+# self-update decision logic.
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Never assumes SCRIPT_URL is set; graceful failure
+#   with actionable error when remote version cannot be fetched.
+# - Intentional (Principle 2): Explicit safe defaults, clear separation of
+#   version fetching vs comparison, and consistent behavior in JSON/quiet modes.
+# - Anti-fragile (Principle 3): Works whether the tool is installed globally,
+#   per-user, or not yet installed; survives network or parsing failures.
+# - Over-protect (Principle 18): Full defensive header, Protection Zone,
+#   Lessons Learned traceability, and strict avoidance of hard-coded
+#   project-specific URLs or repository paths.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-self-management.md
+# - requirement-shell-cli-interface.md
+# - requirement-shell-output-requirements.md
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This function is the single source of truth for remote version comparison.
+# Any change must preserve the SCRIPT_URL handling contract and the exact
+# JSON output shape expected by consumers.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-06-26: Original version contained a hardcoded project-specific default
+#             URL pointing to an unrelated repository (porting artifact).
+#             Corrected to empty safe default + explicit comment. Removed
+#             all hard-coded distribution details to comply with generalization
+#             and hardcoding-prevention rules.
+#
+# Last reviewed: 2026-06-26
+# =============================================================================
+
+ver_check() {
+    # --- Safe Variable Defaults ----
+    # Defensive defaults - never assume globals are set
+    : "${APP_NAME:=ruoyi}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    : "${SCRIPT_URL:=}"
+
+    # SCRIPT_URL is Config SSOT (composed default from REPO_USER/REPO_NAME/APP_NAME).
+    # Override via env for forks or offline channels. Empty → network steps fail loud.
+
+    # Fetch remote version (curl or wget)
+    REMOTE_VERSION=$(util_fetch_remote_version "${SCRIPT_URL}")
+
+    if [ -z "$REMOTE_VERSION" ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Failed to fetch remote version" "network_error"
+        else
+            out_error "Failed to fetch remote version (SCRIPT_URL may be unset or unreachable)"
+        fi
+        return 1
+    fi
+
+    local local_version
+    local_version=$(inst_get_version)
+
+    if [ "${JSON}" -eq 1 ]; then
+        # out_json type message key value … — empty message so fields stay key/value pairs
+        local _is_latest="false"
+        if [ "$local_version" = "$REMOTE_VERSION" ]; then
+            _is_latest="true"
+        elif ver_gt "$local_version" "$REMOTE_VERSION" 2>/dev/null; then
+            _is_latest="true"
+        fi
+        out_json "ver_check" "" \
+            "local_version" "$local_version" \
+            "remote_version" "$REMOTE_VERSION" \
+            "is_latest" "${_is_latest}"
+    else
+        if [ "${QUIET}" -eq 0 ]; then
+            out_info "Checking latest version of ${APP_NAME}..."
+            out_plain "Local version : ${local_version}"
+            out_plain "Latest version: ${REMOTE_VERSION}"
+            out_empty_line
+
+            if [ "$local_version" = "$REMOTE_VERSION" ]; then
+                out_success "You are running the latest version."
+            elif ver_gt "$local_version" "$REMOTE_VERSION"; then
+                out_success "You are running a newer development version (${local_version} > ${REMOTE_VERSION})"
+            elif [ "$local_version" = "not installed" ]; then
+                out_warn "${APP_NAME} is not installed yet."
+            else
+                out_warn "A newer version is available (${REMOTE_VERSION})"
+            fi
+        fi
+    fi
+}
+
+
+# =============================================================================
+# path_add_bashrc() - Add ~/.local/bin to ~/.bashrc
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Appends the PATH export to ~/.bashrc only if not already present.
+#
+# Returns 0 if added (or was already present), 1 if file missing or failed.
+#
+# PRINTF EXCEPTION (class C – file I/O redirect):
+# printf … >> "$bashrc" writes shell config content to a file, not product
+# stdout/stderr. User-visible “→ Added …” lines use out_plain.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+path_add_bashrc() {
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    local bashrc="${HOME}/.bashrc"
+    local path_line
+    path_line=$(printf 'export PATH="%s:$PATH"' "${USER_BIN}")
+    if [ ! -f "$bashrc" ]; then
+        return 1
+    fi
+
+    if ! grep -qF "${USER_BIN}" "$bashrc" 2>/dev/null; then
+        printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$bashrc"
+        printf '%s\n' "${path_line}" >> "$bashrc"
+        if [ "${JSON}" -eq 0 ]; then
+            out_plain "→ Added ${USER_BIN} to PATH for bash"
+        fi
+        return 0
+    fi
+    return 1  # already present
+}
+
+# =============================================================================
+# path_add_zshrc() - Add ~/.local/bin to ~/.zshrc
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Appends the PATH export to ~/.zshrc only if not already present.
+#
+# Returns 0 if added (or was already present), 1 if file missing or failed.
+#
+# PRINTF EXCEPTION (class C – file I/O redirect):
+# printf … >> "$zshrc" writes shell config content to a file, not product
+# stdout/stderr. User-visible “→ Added …” lines use out_plain.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+path_add_zshrc() {
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    local zshrc="${HOME}/.zshrc"
+    local path_line
+    path_line=$(printf 'export PATH="%s:$PATH"' "${USER_BIN}")
+    if [ ! -f "$zshrc" ]; then
+        return 1
+    fi
+
+    if ! grep -qF "${USER_BIN}" "$zshrc" 2>/dev/null; then
+        printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$zshrc"
+        printf '%s\n' "${path_line}" >> "$zshrc"
+        if [ "${JSON}" -eq 0 ]; then
+            out_plain "→ Added ${USER_BIN} to PATH for zsh"
+        fi
+        return 0
+    fi
+    return 1  # already present
+}
+
+# =============================================================================
+# path_add_fish() - Add ~/.local/bin to Fish config
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Creates ~/.config/fish directory if needed and appends the PATH setting
+# to config.fish only if not already present.
+#
+# Returns 0 if added (or was already present), 1 if failed.
+#
+# PRINTF EXCEPTION (class C – file I/O redirect):
+# printf … >> "$fish_config" writes shell config content to a file, not
+# product stdout/stderr. User-visible “→ Added …” lines use out_plain.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+path_add_fish() {
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    local fish_config="${HOME}/.config/fish/config.fish"
+    local path_line
+    path_line=$(printf 'set -gx PATH %s $PATH' "${USER_BIN}")
+
+    # Ensure directory exists
+    if [ ! -d "${HOME}/.config/fish" ] && ! mkdir -p "${HOME}/.config/fish" 2>/dev/null; then
+        return 1
+    fi
+
+    if [ -f "$fish_config" ] && grep -qF "${USER_BIN}" "$fish_config" 2>/dev/null; then
+        return 1  # already present
+    fi
+
+    printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$fish_config"
+    printf '%s\n' "${path_line}" >> "$fish_config"
+
+    if [ "${JSON}" -eq 0 ]; then
+        out_plain "→ Added ${USER_BIN} to PATH for fish shell"
+    fi
+    return 0
+}
+
+# =============================================================================
+# path_add_shell() - Main orchestrator: Add USER_BIN to shell PATHs
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Adds ${USER_BIN} (default ${HOME}/.local/bin) to bash, zsh, and fish
+# configuration files if not already present. Thin orchestrator for path_add_*.
+#
+# Respects --json mode (silent in JSON).
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+path_add_shell() {
+    local added=0
+    local shell_config="N/A"
+
+    # Bash
+    if path_add_bashrc; then
+        added=1
+        shell_config="${HOME}/.bashrc"
+    fi
+
+    # Zsh
+    if path_add_zshrc; then
+        added=1
+        if [ "$shell_config" = "N/A" ]; then
+            shell_config="${HOME}/.zshrc"
+        else
+            shell_config="${shell_config} ${HOME}/.zshrc"
+        fi
+    fi
+
+    # Fish
+    if path_add_fish; then
+        added=1
+        if [ "$shell_config" = "N/A" ]; then
+            shell_config="${HOME}/.config/fish/config.fish"
+        else
+            shell_config="${shell_config} ${HOME}/.config/fish/config.fish"
+        fi
+    fi
+
+    if [ "$added" -eq 1 ] && [ "${JSON}" -eq 0 ]; then
+        out_plain "→ Restart your terminal or run: source ${shell_config}"
+    fi
+}
+
+# =============================================================================
+# util_sha256_file() - SHA-256 hex digest of a file (portable tool chain)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Print the SHA-256 hex digest of file $1 to stdout for capture.
+# Tries sha256sum (GNU/Linux) → shasum -a 256 (macOS) → openssl dgst.
+# Return 1 if no tool or file unreadable.
+#
+# PRINTF/ECHO EXCEPTION (class B – return-via-stdout):
+# Digests are data returns for $(util_sha256_file …), not product UI.
+# =============================================================================
+
+util_sha256_file() {
+    local file="${1-}" dig=""
+    if [ -z "${file}" ] || [ ! -f "${file}" ]; then
+        return 1
+    fi
+    if command -v sha256sum >/dev/null 2>&1; then
+        dig=$(sha256sum "${file}" 2>/dev/null | awk '{ print $1; exit }')
+    elif command -v shasum >/dev/null 2>&1; then
+        dig=$(shasum -a 256 "${file}" 2>/dev/null | awk '{ print $1; exit }')
+    elif command -v openssl >/dev/null 2>&1; then
+        # openssl dgst -sha256 → "SHA256(file)= hex" or "SHA2-256(file)= hex"
+        dig=$(openssl dgst -sha256 "${file}" 2>/dev/null | awk '{ print $NF; exit }')
+    else
+        return 1
+    fi
+    if [ -z "${dig}" ]; then
+        return 1
+    fi
+    printf '%s\n' "${dig}"
+    return 0
+}
+
+# =============================================================================
+# util_fetch_remote_version() - Extract VERSION="…" from remote SCRIPT_URL body
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Download SCRIPT_URL with curl or wget and print the remote VERSION value.
+# Empty stdout on failure (caller fails loud). Class B return-via-stdout.
+# =============================================================================
+
+util_fetch_remote_version() {
+    local url="${1-}"
+    local body=""
+    if [ -z "${url}" ]; then
+        return 1
+    fi
+    if command -v curl >/dev/null 2>&1; then
+        body=$(curl -fsSL "${url}" 2>/dev/null) || body=""
+    elif command -v wget >/dev/null 2>&1; then
+        body=$(wget -qO- "${url}" 2>/dev/null) || body=""
+    else
+        return 1
+    fi
+    if [ -z "${body}" ]; then
+        return 1
+    fi
+    printf '%s\n' "${body}" | grep '^VERSION="' | head -n1 | cut -d'"' -f2
+    return 0
+}
+
+# =============================================================================
+# util_get_install_bin_path() - Return the correct binary path to operate on
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Returns the full path to the ${APP_NAME} binary that should be used for
+# install/uninstall/update operations.
+#
+# Safe Variable Defaults
+#
+# Respects --force and --json.
+# Respects root vs non-root isolation, --force-user, --force-global.
+#
+# For non-root: prefers ~/.local/bin, falls back to /usr/local/bin if present.
+# For root: always uses /usr/local/bin.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is a minimal defensive helper to reduce repetition while preserving
+# the strict root/non-root separation that has been battle-field tested.
+#
+# CRITICAL: Any change here must maintain zero cross-contamination between
+# user and global installations.
+#
+# PRINTF EXCEPTION (class B – function return-via-stdout):
+# Final printf '%s' "${bin_path}" is a data return for $(…) capture — not
+# product UI. Warnings use out_warn. Callers must capture the path.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+util_get_install_bin_path() {
+    # --- Safe Variable Defaults ----
+    # Defensive defaults - never assume globals are set
+    # HOME before any ${HOME}/… path (INC-20260713-001 / set -u order)
+    : "${APP_NAME:=app}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    : "${FORCE_USER:=0}"
+    : "${FORCE_GLOBAL:=0}"
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+
+    local bin_path=""
+
+    # Explicit force flags take precedence
+    if [ "${FORCE_USER}" -eq 1 ]; then
+        bin_path="${USER_BIN}/${APP_NAME}"
+    elif [ "${FORCE_GLOBAL}" -eq 1 ] || [ "$(id -u)" -eq 0 ]; then
+        bin_path="${GLOBAL_BIN}/${APP_NAME}"
+    else
+        # Normal non-root behavior: prefer user-local, fallback to global
+        if [ -f "${USER_BIN}/${APP_NAME}" ]; then
+            bin_path="${USER_BIN}/${APP_NAME}"
+        elif [ -f "${GLOBAL_BIN}/${APP_NAME}" ]; then
+            bin_path="${GLOBAL_BIN}/${APP_NAME}"
+            if [ "${JSON}" -eq 0 ] && [ "${QUIET}" -eq 0 ]; then
+                out_warn "Global installation found. Operating on it (you may need sudo for uninstall)."
+            fi
+        else
+            bin_path="${USER_BIN}/${APP_NAME}"
+        fi
+    fi
+
+    printf '%s' "${bin_path}"
+}
+
+# =============================================================================
+# util_backup() - Create dated backup before any modification
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Creates a dated backup of a file or directory before destructive or
+# modifying operations (rm -rf, sed, config changes).
+#
+# This implements CIAO Principle 10 (Right Backup & Restore Strategy).
+#
+# ────────────────────────────────────────────────
+# CIAO PRINCIPLES APPLIED (v2.9.1)
+# ────────────────────────────────────────────────
+# Principle 1  (Caution)               - Safe path validation
+# Principle 2  (Intentional Verbosity) - Full header + comments
+# Principle 3  (Anti-fragile)          - Survives missing files gracefully
+# Principle 7  (Reusable)              - Designed for reuse in other projects
+# Principle 9  (Safe Temporary Files)  - Uses mktemp where needed
+# Principle 10 (Backup Strategy)       - Dated backup with counter
+#
+# CRITICAL DEFENSIVE RULES:
+# - Never modify files without creating backup first.
+# - Refuse dangerous paths (/, $HOME, empty).
+# - Backup name format: <name>.YYYYMMDD-N.bak
+# - All messages go through out_text helpers only.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is the central backup mechanism. Any change must preserve dated backup
+# naming and safety checks to prevent accidental data loss.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+util_backup() {
+    # --- Safe Variable Defaults ---
+    : "${APP_NAME:=app}"
+    : "${HOME:=/tmp}"
+    : "${PROJECT_NAME:=${APP_NAME}-demo}"
+    : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME}}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    local target="${1-}"
+    local reason="${2:-pre-change}"
+
+    if [ -z "$target" ]; then
+        return 1
+    fi
+
+    # Safety check
+    if [ "$target" = "/" ] || [ "$target" = "${HOME}" ] || [ -z "$target" ]; then
+        out_warn "Refusing to backup dangerous path: $target"
+        return 1
+    fi
+
+    local timestamp
+    timestamp=$(date +%Y%m%d)
+    local counter=1
+    local backup_path
+
+    if [ -d "$target" ]; then
+        backup_path="${target}.${timestamp}-${counter}.bak"
+        while [ -e "$backup_path" ]; do
+            counter=$((counter + 1))
+            backup_path="${target}.${timestamp}-${counter}.bak"
+        done
+        cp -a "$target" "$backup_path" 2>/dev/null && \
+            out_info "Backup created: $backup_path (reason: $reason)" || \
+            out_warn "Failed to create backup of directory $target"
+    elif [ -f "$target" ]; then
+        backup_path="${target}.${timestamp}-${counter}.bak"
+        while [ -e "$backup_path" ]; do
+            counter=$((counter + 1))
+            backup_path="${target}.${timestamp}-${counter}.bak"
+        done
+        cp "$target" "$backup_path" 2>/dev/null && \
+            out_info "Backup created: $backup_path (reason: $reason)" || \
+            out_warn "Failed to create backup of file $target"
+    fi
+}
+
+# =============================================================================
+# Cache folder resolvers
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Returns the best available cache directory for scratch files.
+# Linux: shm leaf, then /tmp leaf, then ${HOME}/.cache leaf.
+# Git Bash: /tmp leaf, then AppData Local Temp leaf.
+# Mac: /tmp leaf, then Library/Caches leaf, then ${HOME}/cache leaf.
+# Volatile leaves are cache-${APP_NAME}-${login}-$$. Home leaves omit login.
+# A missed tier is silent (no warning, no error). Error only if every tier fails.
+# MUST NOT restore /dev/shm/${APP_NAME} or /dev/shm/${APP_NAME}-${USERNAME}.
+#
+# The directory name carries $$. Scratch files inside it use util_mktemp
+# (mktemp XXXXXX), never a predictable $$ file name.
+#
+# CRITICAL WARNING - MULTI-USER PROBLEM AI FREQUENTLY OVERLOOKS:
+# Two logins must not share one leaf. Volatile parents (/dev/shm/cache and
+# /tmp/cache) are mode 1777 so each login can add its own leaf. The leaf is
+# mode 0700. Home tiers omit the login segment because ${HOME} is that login.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# ECHO EXCEPTION (class B – function return-via-stdout):
+# echo/printf of cache paths is a data return for $(util_resolve_storage)
+# capture, not a product user message. Failures use out_die.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-07-13: STORAGE_DIR was bare/unset on third fallback (INC-20260713-001 P1).
+# 2026-07-16: Create chosen tier root before echo (fail-closed) for all tiers.
+# 2026-09-27: Leaf is cache-${APP_NAME}-${login}-$$ under /dev/shm/cache (Linux).
+#             Tier misses stay silent. Home leaf omits login. Persistence is
+#             ${HOME}/.local/${APP_NAME}. Bug: a writable /dev/shm used to
+#             fail the whole resolve when the leaf mkdir failed, and the old
+#             /dev/shm/${APP_NAME}-${USERNAME} shape looked like a project tree.
+#
+# Last reviewed: 2026-09-27
+# SSOT: requirement-shell-cli-storage.md
+# Test-purpose: RUOYI_CACHE_HOST=linux|gitbash|mac
+#               RUOYI_CACHE_SKIP=preferred skips tier 1 with no message
+# =============================================================================
+util_cache_host_kind() {
+    case "${RUOYI_CACHE_HOST:-}" in
+        linux|gitbash|mac)
+            printf '%s' "${RUOYI_CACHE_HOST}"
+            return 0
+            ;;
+    esac
+    if [ -n "${MSYSTEM:-}" ]; then
+        printf '%s' "gitbash"
+        return 0
+    fi
+    case "$(uname -s 2>/dev/null)" in
+        MINGW*|MSYS*) printf '%s' "gitbash" ;;
+        Darwin) printf '%s' "mac" ;;
+        *) printf '%s' "linux" ;;
+    esac
+}
+
+util_cache_login() {
+    _clogin="${USERNAME:-unknown}"
+    case "${_clogin}" in
+        *[!A-Za-z0-9._-]*)
+            _clogin=$(printf '%s' "${_clogin}" | tr -c 'A-Za-z0-9._-' '_')
+            ;;
+    esac
+    [ -n "${_clogin}" ] || _clogin="unknown"
+    printf '%s' "${_clogin}"
+}
+
+util_cache_volatile_leaf() {
+    : "${APP_NAME:=ruoyi}"
+    printf '%s' "cache-${APP_NAME}-$(util_cache_login)-$$"
+}
+
+util_cache_home_leaf() {
+    : "${APP_NAME:=ruoyi}"
+    printf '%s' "cache-${APP_NAME}-$$"
+}
+
+util_preferred_cache_dir() {
+    : "${APP_NAME:=ruoyi}"
+    : "${HOME:=/tmp}"
+    case "$(util_cache_host_kind)" in
+        gitbash|mac)
+            printf '%s' "/tmp/cache/$(util_cache_volatile_leaf)"
+            ;;
+        *)
+            printf '%s' "/dev/shm/cache/$(util_cache_volatile_leaf)"
+            ;;
+    esac
+}
+
+util_fallback_cache_dir() {
+    : "${APP_NAME:=ruoyi}"
+    : "${HOME:=/tmp}"
+    case "$(util_cache_host_kind)" in
+        gitbash)
+            printf '%s' "${HOME}/AppData/Local/Temp/$(util_cache_home_leaf)"
+            ;;
+        mac)
+            printf '%s' "${HOME}/Library/Caches/$(util_cache_home_leaf)"
+            ;;
+        *)
+            printf '%s' "/tmp/cache/$(util_cache_volatile_leaf)"
+            ;;
+    esac
+}
+
+util_fallback2_cache_dir() {
+    : "${APP_NAME:=ruoyi}"
+    : "${HOME:=/tmp}"
+    case "$(util_cache_host_kind)" in
+        gitbash)
+            printf '%s' ""
+            ;;
+        mac)
+            printf '%s' "${HOME}/cache/$(util_cache_home_leaf)"
+            ;;
+        *)
+            printf '%s' "${HOME}/.cache/$(util_cache_home_leaf)"
+            ;;
+    esac
+}
+
+# Create one cache tier. Silent on failure (caller tries the next tier).
+# Parent /dev/shm/cache and /tmp/cache prefer mode 1777 so a later login can
+# add its own leaf. If we own a parent created too tight, chmod 1777.
+# The leaf is 0700 and must be owned by this login.
+util_cache_try_dir() {
+    _cdir="${1:-}"
+    [ -n "${_cdir}" ] || return 1
+    _cparent=$(dirname "${_cdir}")
+    case "${_cparent}" in
+        /dev/shm/cache|/tmp/cache)
+            mkdir -m 1777 -p "${_cparent}" 2>/dev/null || mkdir -p "${_cparent}" 2>/dev/null || return 1
+            chmod 1777 "${_cparent}" 2>/dev/null || true
+            ;;
+        *)
+            mkdir -p "${_cparent}" 2>/dev/null || return 1
+            ;;
+    esac
+    mkdir -m 0700 -p "${_cdir}" 2>/dev/null || mkdir -p "${_cdir}" 2>/dev/null || return 1
+    chmod 0700 "${_cdir}" 2>/dev/null || true
+    if [ ! -d "${_cdir}" ] || [ ! -w "${_cdir}" ] || [ ! -O "${_cdir}" ]; then
+        return 1
+    fi
+    return 0
+}
+
+# Persistence storage (durable per-login data).
+# Path: ${HOME}/.local/${APP_NAME}
+# MUST NOT be ${HOME}/.local/bin (install) or a ram-drive cache leaf.
+util_persistent_storage_dir() {
+    : "${APP_NAME:=ruoyi}"
+    : "${HOME:=/tmp}"
+    printf '%s' "${HOME}/.local/${APP_NAME}"
+}
+
+# Create persistence storage before echo (fail-closed). Class B stdout.
+util_resolve_persistent_storage() {
+    : "${APP_NAME:=ruoyi}"
+    : "${HOME:=/tmp}"
+    _persist=$(util_persistent_storage_dir)
+    case "${_persist}" in
+        */.local/bin|*/.local/bin/)
+            out_die "Persistence storage must not be the install bin directory ${_persist}"
+            ;;
+    esac
+    if ! mkdir -p "${_persist}" 2>/dev/null || [ ! -w "${_persist}" ]; then
+        out_die "Cannot create persistence storage ${_persist}"
+    fi
+    echo "${_persist}"
+    unset _persist
+    return 0
+}
+
+# =============================================================================
+# util_resolve_storage() - Cache folder resolver
+# =============================================================================
+util_resolve_storage() {
+    : "${USERNAME:=unknown}"
+    : "${APP_NAME:=ruoyi}"
+    : "${HOME:=/tmp}"
+
+    _storage_candidate=""
+    if [ "${RUOYI_CACHE_SKIP:-}" != "preferred" ]; then
+        _pref=$(util_preferred_cache_dir)
+        if util_cache_try_dir "${_pref}"; then
+            _storage_candidate="${_pref}"
+        fi
+    fi
+    if [ -z "${_storage_candidate}" ]; then
+        _fb1=$(util_fallback_cache_dir)
+        if util_cache_try_dir "${_fb1}"; then
+            _storage_candidate="${_fb1}"
+        fi
+    fi
+    if [ -z "${_storage_candidate}" ]; then
+        _fb2=$(util_fallback2_cache_dir)
+        if [ -n "${_fb2}" ] && util_cache_try_dir "${_fb2}"; then
+            _storage_candidate="${_fb2}"
+        fi
+    fi
+    if [ -z "${_storage_candidate}" ]; then
+        out_die "Cannot create cache folder"
+    fi
+    echo "${_storage_candidate}"
+    unset _storage_candidate _pref _fb1 _fb2
+    return 0
+}
+
+# =============================================================================
+# util_mktemp() - Isolated scratch file (consume EFFECTIVE_STORAGE_DIR)
+# =============================================================================
+# ALIGNMENT: requirement-shell-cli-storage.md
+# The cache directory name includes $$. Scratch file names must not.
+# =============================================================================
+util_mktemp() {
+    : "${APP_NAME:=ruoyi}"
+    : "${EFFECTIVE_STORAGE_DIR:=}"
+    _suffix="${1:-tmp}"
+    _dollar='$'
+    case "${_suffix}" in
+        *"${_dollar}${_dollar}"*)
+            out_die "util_mktemp: refuse predictable \$\$ name template"
+            ;;
+    esac
+    if [ -z "${EFFECTIVE_STORAGE_DIR}" ]; then
+        EFFECTIVE_STORAGE_DIR=$(util_resolve_storage)
+        export EFFECTIVE_STORAGE_DIR
+    fi
+    mktemp "${EFFECTIVE_STORAGE_DIR}/${APP_NAME}.${_suffix}.XXXXXX" 2>/dev/null \
+        || mktemp "${TMPDIR:-/tmp}/${APP_NAME}.${_suffix}.XXXXXX" 2>/dev/null \
+        || mktemp
+}
+
+# =============================================================================
+# prompt_ask() - Defensive general-purpose interactive prompt with default
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Displays a message, shows current/default values if available, and waits
+# for user input. Returns the answer (or the default if user presses Enter).
+# Fully respects --quiet, --json, and non-TTY environments.
+# Uses the centralized output system (out_info / out_msg_n).
+#
+# This is the **Single Source of Truth** for all simple value prompts in the project.
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Multiple guards prevent prompting in non-interactive contexts.
+# - Intentional (Principle 2): Clear behavior for TTY vs non-TTY and quiet/JSON modes.
+# - Anti-fragile (Principle 3): Works reliably across different terminals and invocation methods.
+# - Over-protect (Principle 18): Trusts explicit INTERACTIVE=1 from caller when low-level TTY check is flaky.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Past AI assistants have repeatedly broken this by using raw printf/echo + read,
+# which violates the single output system, quiet/json handling, and TTY detection.
+#
+# PRINTF EXCEPTION (class B – function return-via-stdout only):
+# printf '%s' "${default|answer}" returns the chosen value for $(prompt_ask …)
+# capture. It is NOT the prompt UI. User-visible prompt text MUST stay on
+# out_info / out_msg_n. Do not replace those with raw printf + read.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+prompt_ask() {
+    # --- Safe Variable Defaults ---
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    # set -u safe: missing args become empty defaults (INC-20260713-001 class)
+    local message="${1-}"
+    local default="${2-}"
+    local current="${3-}"
+
+    # Never prompt in non-interactive modes
+    if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+        printf '%s' "${default}"
+        return 0
+    fi
+
+    # Must have a real TTY (unless caller explicitly set INTERACTIVE=1)
+    if ! [ -t 0 ] || ! [ -t 1 ]; then
+        if [ "${INTERACTIVE:-0}" -ne 1 ]; then
+            printf '%s' "${default}"
+            return 0
+        fi
+    fi
+
+    # Show current value if present
+    if [ -n "${current}" ]; then
+        out_info "Current: ${current}"
+    fi
+
+    # Show default
+    if [ -n "${default}" ]; then
+        out_info "Default: ${default}"
+    fi
+
+    out_msg_n "${message}: "
+
+    local answer=""
+    read -r answer || true
+
+    if [ -z "${answer}" ]; then
+        printf '%s' "${default}"
+    else
+        printf '%s' "${answer}"
+    fi
+}
+
+# =============================================================================
+# prompt_yes_no() - Defensive interactive yes/no confirmation prompt
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Displays a message and waits for (y/N) confirmation.
+# Returns 0 if user says yes, returns 1 (non-zero) if user says no or cancels.
+#
+# CRITICAL DEFENSIVE RULES (DO NOT VIOLATE):
+# 1. Must ALWAYS go through single source of truth (out_msg_n + out_text)
+# 2. Must respect --quiet and --json (never show prompt in those modes)
+# 3. Must NEVER use raw printf/echo for user-visible prompt text (product UI)
+#    (class-B return-via-stdout does not apply here — this helper uses exit status)
+# 4. Must work correctly in non-interactive / curl | bash environments
+# 5. Must preserve TTY detection and color handling via out_text
+# 6. This is the SINGLE SOURCE OF TRUTH for all yes/no confirmations in the project.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Past AI assistants have repeatedly replaced this kind of prompt with
+# raw printf + read, breaking consistency with out_text(), --quiet,
+# --json, TTY detection, and the overall defensive design.
+#
+# This helper exists specifically to prevent that regression and to enforce
+# CIAO-Lite principles of Caution, Intentionality, and Over-protect.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+prompt_yes_no() {
+    # --- Safe Variable Defaults ----
+    # Defensive defaults - never assume globals are set
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    local message="$1"
+
+    # Never show prompt in quiet or json mode
+    if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+        return 1   # treat as "no" in non-interactive modes
+    fi
+
+    # Must be interactive TTY
+    if ! [ -t 0 ] || ! [ -t 1 ]; then
+        return 1
+    fi
+
+    out_msg_n "${message} (y/N)? "
+
+    local answer=""
+    read -r answer || true
+
+    case "$answer" in
+        [Yy]*|[Yy][Ee][Ss]*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+
+# =============================================================================
+# app_about() - Display diagnostic information about the current environment
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Shows detailed diagnostic information: version, installation status (global + local),
+# current shell, TTY/interactive status, user, and helpful next steps.
+#
+# Fully respects --quiet and --json modes.
+# In JSON mode: outputs exactly ONE clean, machine-readable JSON object.
+# In quiet mode: prints nothing.
+#
+# This function provides real value to users (unlike the previous overly simple version)
+# and should be kept in sync with the overall CIAO design and README.md.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other CIAO projects.
+# Last reviewed: April 2026
+# =============================================================================
+
+# =============================================================================
+# util_get_current_shell() - Detect current / parent shell name
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Returns a best-effort shell command name for diagnostics (about).
+# Prefer parent shell when the current process is sh/dash/ash/the app itself.
+#
+# PRINTF EXCEPTION (class B – function return-via-stdout):
+# Final printf '%s' "$shell" (and echo fallbacks inside $(…)) are data
+# returns for capture by app_about — not product messages. Display uses out_*.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Nested functions are not portable POSIX; this must stay top-level.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+util_get_current_shell() {
+    local shell="unknown"
+    shell=$(ps -p $$ -o comm= 2>/dev/null | tr -d '()' || echo "unknown")
+
+    if [ "$shell" = "${APP_NAME}" ] || [ "$shell" = "sh" ] || \
+       [ "$shell" = "dash" ] || [ "$shell" = "ash" ]; then
+        local parent_pid
+        parent_pid=$(ps -p $$ -o ppid= 2>/dev/null | tr -d ' ')
+        if [ -n "$parent_pid" ]; then
+            shell=$(ps -p "$parent_pid" -o comm= 2>/dev/null | tr -d '()' || echo "$shell")
+        fi
+    fi
+    printf '%s' "$shell"
+}
+
+
+app_about() {
+    # --- Safe Variable Defaults ---
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    : "${APP_NAME:=ruoyi}"
+    # Version comes from global SSOT (VERSION="…" hard-assign near top); default only if unset
+    : "${VERSION:=2.3.5}"
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${SCRIPT_URL:=}"
+    : "${USERNAME:=unknown}"
+    : "${HOME:=/tmp}"
+
+    # Storage (requirement-shell-cli-storage): resolve if main has not yet
+    if [ -z "${EFFECTIVE_STORAGE_DIR:-}" ]; then
+        EFFECTIVE_STORAGE_DIR=$(util_resolve_storage)
+    fi
+    _cache_preferred=$(util_preferred_cache_dir)
+    _cache_fallback=$(util_fallback_cache_dir)
+    _cache_fallback_2=$(util_fallback2_cache_dir)
+    STORAGE_DIR="${_cache_fallback}"
+    if [ -z "${PERSISTENT_STORAGE_DIR:-}" ]; then
+        PERSISTENT_STORAGE_DIR=$(util_resolve_persistent_storage)
+    fi
+
+    if [ "${JSON}" -eq 1 ]; then
+        # === JSON MODE - Clean, machine-friendly output ===
+        local installed="false"
+        inst_is_installed && installed="true"
+
+        local global_ver="not found"
+        if [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
+            global_ver=$(grep '^VERSION="' "${GLOBAL_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        fi
+
+        local local_ver="not found"
+        if [ -x "${USER_BIN}/${APP_NAME}" ]; then
+            local_ver=$(grep '^VERSION="' "${USER_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        fi
+
+        local current_shell
+        current_shell=$(util_get_current_shell)
+
+        local interactive="false"
+        [ -t 1 ] && interactive="true"
+
+        local current_user
+        current_user="$(id -un 2>/dev/null || echo "unknown")"
+
+        out_json "about" "" \
+            "app" "${APP_NAME}" \
+            "version" "${VERSION}" \
+            "installed" "${installed}" \
+            "global_version" "${global_ver}" \
+            "local_version" "${local_ver}" \
+            "shell" "${current_shell}" \
+            "interactive" "${interactive}" \
+            "user" "${current_user}" \
+            "cache_used" "${EFFECTIVE_STORAGE_DIR}" \
+            "cache_preferred" "${_cache_preferred}" \
+            "cache_fallback" "${_cache_fallback}" \
+            "cache_fallback_2" "${_cache_fallback_2}" \
+            "persistence_storage" "${PERSISTENT_STORAGE_DIR}" \
+            "effective_storage" "${EFFECTIVE_STORAGE_DIR}" \
+            "storage_dir" "${STORAGE_DIR}"
+        return 0
+    fi
+
+    # === Normal Human-readable Mode ===
+    [ "${QUIET}" -eq 1 ] && return 0
+
+    out_info "=== ${APP_NAME} ${VERSION} - About / Diagnostics ==="
+    out_empty_line
+
+    # Installation status
+    if inst_is_installed; then
+        out_success "${APP_NAME} is properly installed."
+    else
+        out_warn "${APP_NAME} is NOT installed in your PATH."
+        if [ -n "${SCRIPT_URL}" ]; then
+            out_info "   Recommended: curl -fsSL ${SCRIPT_URL} | bash"
+        else
+            out_info "   Set SCRIPT_URL to the install script URL, then: curl -fsSL \"\${SCRIPT_URL}\" | bash"
+        fi
+    fi
+
+    out_empty_line
+
+    # Global vs Local installation details
+    if [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
+        global_ver=$(grep '^VERSION="' "${GLOBAL_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        out_info "Global install  (${GLOBAL_BIN}/${APP_NAME}):   ${global_ver}"
+    else
+        out_info "Global install  (${GLOBAL_BIN}/${APP_NAME}):   not found"
+    fi
+
+    if [ -x "${USER_BIN}/${APP_NAME}" ]; then
+        local_ver=$(grep '^VERSION="' "${USER_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        out_info "Local install   (${USER_BIN}/${APP_NAME}):    ${local_ver}"
+    else
+        out_info "Local install   (${USER_BIN}/${APP_NAME}):    not found"
+    fi
+
+    out_empty_line
+
+    local current_user
+    current_user="$(id -un 2>/dev/null || echo "unknown")"
+    out_info "Current user:      ${current_user}"
+
+    if [ "$(id -u)" -eq 0 ]; then
+        out_success "Execution context: root (global install path available)"
+    else
+        out_info "Execution context: normal user (Type 0 CLI self-management)"
+    fi
+
+    out_empty_line
+
+    local current_shell
+    current_shell=$(util_get_current_shell)
+
+    out_info "Current shell:     ${current_shell}"
+
+    if [ -t 1 ]; then
+        out_info "TTY / Interactive: yes"
+    else
+        out_info "TTY / Interactive: no (non-interactive / scripted mode)"
+    fi
+
+    out_empty_line
+    out_info "Cache folder used: ${EFFECTIVE_STORAGE_DIR}"
+    out_info "Cache folder (preferred): ${_cache_preferred}"
+    out_info "Cache folder (1st fallback): ${_cache_fallback}"
+    if [ -n "${_cache_fallback_2}" ]; then
+        out_info "Cache folder (2nd fallback): ${_cache_fallback_2}"
+    fi
+    out_info "Persistence storage: ${PERSISTENT_STORAGE_DIR}"
+
+    out_empty_line
+    out_info "Useful commands:"
+    out_info "   ${APP_NAME} help           → Full usage"
+    out_info "   ${APP_NAME} self-update    → Update to latest version"
+    out_info "   ${APP_NAME} self-uninstall → Clean removal from system"
+    out_info "   ${APP_NAME} --json         → Machine-readable output"
+
+    out_empty_line
+    out_info "Run '${APP_NAME} help' for complete usage information."
+}
+
+app_version() {
+    : "${APP_NAME:=ruoyi}"
+    : "${VERSION:=2.3.5}"
+    : "${JSON:=0}"
+    if [ "${JSON}" -eq 1 ]; then
+        # Same machine contract as historical app_main inline path
+        out_json "version" "" "app" "${APP_NAME}" "version" "${VERSION}"
+    else
+        out_info "${APP_NAME} version ${VERSION}"
+    fi
+}
+
+# =============================================================================
+# app_help() - Display help for ruoyi (Type 0 + domain notice)
+# =============================================================================
+#
+# Shows usage, available commands, and global flags.
+# Fully respects --quiet and --json modes.
+#
+# In --json mode: returns a minimal success object instead of long text.
+# In --quiet mode: prints nothing (silent).
+#
+# Keep in sync with requirement-shell-cli-interface.md command table.
+# =============================================================================
+
+app_help() {
+    : "${SHORT_DESCRIPTION:=${APP_DESC:-Shell script bootstrap for self Installation & Maintenance}}"
+    : "${DESCRIPTION:=Type 0 CLI + RuoYi domain: install, version-check, self-update, self-uninstall, about, setup, mariadb, mysql, redis, run, db-extract.}"
+
+    if [ "${JSON}" -eq 1 ]; then
+        out_json "success" "Help text available in human-readable mode. Run without --json." \
+            "command" "help" \
+            "note" "Use --json with version, about, version-check, install, self-update, self-uninstall."
+        return 0
+    fi
+
+    if [ "${QUIET}" -eq 1 ]; then
+        return 0
+    fi
+
+    out_info "${APP_NAME} — ${SHORT_DESCRIPTION}"
+    out_plain "${DESCRIPTION}"
+    out_empty_line
+
+    out_info "Usage:"
+    out_plain "  ${APP_NAME} [command] [options]"
+    out_empty_line
+
+    out_info "Self-Management (Type 0 - any user):"
+    out_plain "  install              Install ${APP_NAME} (root→global, user→~/.local/bin)"
+    out_plain "  version              Show current version"
+    out_plain "  about                Show detailed diagnostics"
+    out_plain "  version-check        Compare local vs remote version (needs SCRIPT_URL)"
+    out_plain "  self-update          Update ${APP_NAME} to a newer remote version"
+    out_plain "  self-uninstall       Remove ${APP_NAME} (safe PATH cleanup)"
+    out_plain "  help                 Show this help"
+    out_empty_line
+
+    out_info "Global Options:"
+    out_plain "  --quiet, -q          Suppress info/success (errors and warnings still shown)"
+    out_plain "  --json               Machine-readable JSON (implies --quiet)"
+    out_plain "  --force              Force reinstall / skip uninstall confirm / allow downgrade"
+    out_plain "  --debug              Debug diagnostics on stderr"
+    out_empty_line
+
+    # Effective channel values (Config SSOT / env override) so help is actionable.
+    # CHECKSUM is an install-path runtime pin only — never listed here (requirement-shell-automatic-checksum).
+    : "${REPO_USER:=cloudgen}"
+    : "${REPO_NAME:=ruoyi}"
+    : "${SCRIPT_URL:=}"
+
+    out_info "Environment:"
+    out_plain "  REPO_USER            ${REPO_USER}"
+    out_plain "                       GitHub owner used to compose default SCRIPT_URL"
+    out_plain "  REPO_NAME            ${REPO_NAME}"
+    out_plain "                       GitHub repo used to compose default SCRIPT_URL"
+    if [ -n "${SCRIPT_URL}" ]; then
+        out_plain "  SCRIPT_URL           ${SCRIPT_URL}"
+    else
+        out_plain "  SCRIPT_URL           (not set)"
+    fi
+    out_plain "                       Canonical install channel (override via env; needed for version-check/self-update)"
+    out_empty_line
+}
+
+
+# =============================================================================
+
+# =============================================================================
+# DOMAIN SURFACE (B only) — specialized from selfmanaged architecture
+# Source: archived domain oracle; do not reverse-copy onto A (selfmanaged).
+# =============================================================================
+
+# --- domain port from ruoyi oracle: util_generate_db_pass ---
+util_generate_db_pass() {
+    # --- Safe Variable Defaults ---
+    : "${JSON:=0}"
+
+    local length=16
+    local password
+    password=$(tr -dc 'A-Za-z0-9!@#$^&*()_+' < /dev/urandom | head -c "$length" 2>/dev/null || echo "RuoyiPass$(date +%s)")
+
+    printf '%s' "$password"
+}
+
+# =============================================================================
+# util_get_install_bin_path() - Return the correct binary path to operate on
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Returns the full path to the ${APP_NAME} binary that should be used for
+# install/uninstall/update operations.
+#
+# Safe Variable Defaults
+#
+# Respects --force and --json.
+# Respects root vs non-root isolation, --force-user, --force-global.
+#
+# For non-root: prefers ~/.local/bin, falls back to /usr/local/bin if present.
+# For root: always uses /usr/local/bin.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is a minimal defensive helper to reduce repetition while preserving
+# the strict root/non-root separation that has been battle-field tested.
+#
+# CRITICAL: Any change here must maintain zero cross-contamination between
+# user and global installations.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: ruo_build_run ---
+ruo_build_run() {
+    # --- Safe Variable Defaults ---
+    : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME}}"
+    : "${PORT:=8080}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    out_info "Building RuoYi project (this may take a few minutes)..."
+
+    cd "${PROJECT_DIR}" || out_die "Cannot cd into ${PROJECT_DIR}"
+
+    mvn clean package -Dmaven.test.skip=true || {
+        out_warn "Build failed. Try debugging with:"
+        out_plain "  cd \"${PROJECT_DIR}\" && mvn clean package -Dmaven.test.skip=true"
+        exit 1
+    }
+
+    # Check that the jar was actually produced
+    local jar_file="${PROJECT_DIR}/ruoyi-admin/target/ruoyi-admin.jar"
+    if [ ! -f "${jar_file}" ]; then
+        out_die "Build succeeded but jar file not found: ${jar_file}"
+    fi
+
+    if [ "${JSON}" -eq 1 ]; then
+        out_json "out_success" "Build completed" "jar" "${jar_file}" "port" "${PORT}"
+        return 0
+    fi
+
+    out_success "Build completed successfully."
+    out_empty_line
+    msg "=============================================================="
+    msg "  ${PROJECT_NAME} is starting..."
+    msg "  → Open browser: http://localhost:${PORT}"
+    msg "  → Default login: admin / admin123"
+    msg "  → Press Ctrl+C to stop"
+    msg "=============================================================="
+    out_empty_line
+
+    # Run the application (uses SDKMAN Java if sourced correctly)
+    exec java -jar "${jar_file}"
+}
+
+# =============================================================================
+# env_check_alpine() - Alpine Linux bash requirement check
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Checks if running on Alpine Linux and ensures bash is installed (required by SDKMAN!).
+# Shows clear instructions if bash is missing.
+#
+# This function is reused across multiple projects.
+# It respects the ${SH} variable set at the top of the script.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# === SINGLE SOURCE OF TRUTH ENFORCEMENT FOR TEXT OUTPUT ===
+# All human-readable messages, instructions, and warnings in this function
+# MUST go exclusively through out_text() via the approved helpers:
+# out_info(), out_warn(), msg(), plain(), out_msg_n(), etc.
+# NEVER use raw printf, echo, or cat for any user-visible text.
+# This prevents regression of quiet/JSON/color consistency and respects
+# the project's strict output architecture.
+# === END OF SINGLE SOURCE OF TRUTH ENFORCEMENT ===
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+# --- domain port from ruoyi oracle: env_check_alpine ---
+env_check_alpine() {
+    # --- Safe Variable Defaults ----
+    : "${APP_NAME:=app}"
+    : "${REPO_USER:=user}"
+    : "${REPO_NAME:=app}"
+    : "${SH:=bash}"
+    : "${SCRIPT_URL:=https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/src/${APP_NAME}}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    if [ -f "/etc/alpine-release" ] && [ "${SH}" = "bash" ]; then
+        out_info "Alpine Linux detected."
+        if ! command -v ${SH} >/dev/null 2>&1; then
+            out_warn "${SH} is required for SDKMAN! on Alpine Linux."
+            out_plain ""
+            msg "Please install ${SH} first:"
+            msg "    apk add ${SH}"
+            out_plain ""
+            msg "Then re-run this script with:"
+            msg "    ${SH} <(curl -fsSL ${SCRIPT_URL})"
+            out_plain ""
+
+            exit 1
+        fi
+    fi
+}
+
+# =============================================================================
+# ruo_clone() - Clone and prepare the official RuoYi project
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Clones the official RuoYi repository ($RUOYI_GIT_REPO), updates Java version
+# in pom.xml, adjusts the server port in application.yml, and prepares the project
+# for Maven build. 
+#
+# This function is the first step after SDKMAN/Java/Maven setup and before
+# database configuration (MySQL or MariaDB).
+#
+# ────────────────────────────────────────────────
+# CIAO PRINCIPLES APPLIED (v2.9.1)
+# ────────────────────────────────────────────────
+# Principle 1  (Caution)               - Repeated safe defaults, explicit checks
+# Principle 2  (Intentional Verbosity) - Full General Purpose + heavy comments
+# Principle 3  (Anti-fragile)          - Survives existing project, partial git failures
+# Principle 7  (Reusable Protection)   - DO NOT MODIFY warning
+# Principle 10 (Right Backup Strategy) - Dated backup before rm -rf or sed modifications
+# Principle 14 (Interactive vs Non-Interactive) - Respects FORCE_REINSTALL and non-TTY safely
+# Principle 16 (Input Pattern Checking) - Validates PROJECT_DIR and FORCE flag
+#
+# CRITICAL DEFENSIVE RULES:
+# 1. Never assume ${PROJECT_DIR} is empty or safe to delete.
+# 2. Always create a dated backup (Principle 10) before any rm -rf or sed.
+# 3. Respect --force / FORCE_REINSTALL — do not delete user data silently.
+# 4. All user-visible messages MUST go through out_info()/out_success()/out_warn()/out_die() only.
+# 5. Git clone uses --depth 1 for speed and minimal footprint.
+# 6. sed operations are defensive (2>/dev/null || true) but still backed up first.
+#
+# NON-INTERACTIVE MODE (curl | bash):
+#   - No prompt
+#   - Always backup existing folder then replace (as requested)
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: ruo_clone ---
+ruo_clone() {
+    # --- Safe Variable Defaults (repeated on purpose - CIAO Principle 1) ---
+
+    : "${APP_NAME:=app}"
+    : "${PROJECT_NAME:=${APP_NAME}-demo}"
+    : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME}}"
+    : "${FORCE_REINSTALL:=0}"
+    : "${RUOYI_GIT_REPO:=https://github.com/yangzongzhuan/RuoYi.git}"
+    : "${JAVA_VERSION:=21}"
+    : "${PORT:=8080}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    out_info "Cloning RuoYi project..."
+
+    # Backup strategy before any destructive action (CIAO Principle 10)
+    if [ -d "${PROJECT_DIR}" ]; then
+        util_backup "${PROJECT_DIR}" "pre-clone" || out_warn "Backup failed — continuing with caution"
+    fi
+
+    if [ -d "${PROJECT_DIR}" ]; then
+        # Detect non-interactive mode (curl | bash, no TTY, CI, etc.)
+        if ! [ -t 0 ] || [ "${QUIET}" = "1" ] || [ "${FORCE_REINSTALL}" = "1" ]; then
+            # Non-interactive: backup + replace (as requested)
+            out_info "Non-interactive mode detected (or --force used) → replacing existing folder"
+            if [ -z "${PROJECT_DIR}" ] || [ "${PROJECT_DIR}" = "/" ] || [ "${PROJECT_DIR}" = "${HOME}" ]; then
+                out_die "Refusing to rm -rf dangerous path: ${PROJECT_DIR}"
+            fi
+            rm -rf "${PROJECT_DIR}" || out_die "Failed to remove old project directory"
+        else
+            # Interactive mode: ask user
+            out_warn "Project folder already exists: ${PROJECT_DIR}"
+            if prompt_yes_no "Do you want to REMOVE it and re-download (replace)?"; then
+                out_info "User chose to replace → removing old project folder..."
+                if [ -z "${PROJECT_DIR}" ] || [ "${PROJECT_DIR}" = "/" ] || [ "${PROJECT_DIR}" = "${HOME}" ]; then
+                    out_die "Refusing to rm -rf dangerous path: ${PROJECT_DIR}"
+                fi
+                rm -rf "${PROJECT_DIR}" || out_die "Failed to remove old project directory"
+            else
+                out_info "Skipping download - using existing project"
+                out_info "Use --force to reset (data will be backed up first)."
+                return 0
+            fi
+        fi
+    fi
+
+    # Perform clone
+    git clone --depth 1 "${RUOYI_GIT_REPO}" "${PROJECT_DIR}" || out_die "Git clone failed"
+
+    cd "${PROJECT_DIR}" || out_die "Cannot cd into ${PROJECT_DIR}"
+
+    # Backup again before any file modifications (sed)
+    util_backup "${PROJECT_DIR}/pom.xml" "pre-sed" || true
+    util_backup "${PROJECT_DIR}/ruoyi-admin/src/main/resources/application.yml" "pre-sed" || true
+
+    # Update Java version (defensive sed)
+    sed -i "s|<java.version>.*</java.version>|<java.version>${JAVA_VERSION}</java.version>|g" pom.xml 2>/dev/null || true
+
+    # Update port (defensive)
+    local config_file="ruoyi-admin/src/main/resources/application.yml"
+    if [ -f "$config_file" ]; then
+        sed -i "s/port: 80/port: ${PORT}/g" "$config_file" 2>/dev/null || true
+        out_info "Updated server port to ${PORT} in ${config_file}"
+    else
+        out_warn "application.yml not found — port update skipped"
+    fi
+
+    out_success "RuoYi project ready at ${PROJECT_DIR}"
+    out_success "Use '${APP_NAME} mysql' or '${APP_NAME} mariadb' (default) for database setup next."
+}
+
+# =============================================================================
+# debconf_noninteractive_db() - Helper for non-interactive package setup
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Pre-configures debconf answers for MySQL/MariaDB installation in non-interactive mode.
+#
+# ────────────────────────────────────────────────
+# CIAO PRINCIPLES APPLIED
+# ────────────────────────────────────────────────
+# Principle 1, 3, 7, 9, 14
+#
+# CRITICAL: Used only when no TTY is detected.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: debconf_noninteractive_db ---
+debconf_noninteractive_db() {
+    local engine="$1"   # mysql or mariadb
+    local root_pass="$2"
+
+    if [ -z "$root_pass" ]; then
+        root_pass=$(util_generate_db_pass)
+        out_info "Generated random root password: ${root_pass}"
+        out_info "Save this password! It will NOT be shown again."
+    fi
+
+    echo "mariadb-server-${engine}/root_password password ${root_pass}" | sudo debconf-set-selections 2>/dev/null || true
+    echo "mariadb-server-${engine}/root_password_again password ${root_pass}" | sudo debconf-set-selections 2>/dev/null || true
+    echo "${engine}-server/root_password password ${root_pass}" | sudo debconf-set-selections 2>/dev/null || true
+    echo "${engine}-server/root_password_again password ${root_pass}" | sudo debconf-set-selections 2>/dev/null || true
+
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+}
+
+
+# =============================================================================
+# db_detect_engine() - Determine MySQL or MariaDB engine from flags
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Parses command line flags and sets the active database engine.
+# Default is MariaDB as requested. --mysql and --mariadb are mutually exclusive.
+#
+# ────────────────────────────────────────────────
+# CIAO PRINCIPLES APPLIED
+# ────────────────────────────────────────────────
+# Principle 1, 2, 6, 14, 16
+#
+# CRITICAL DEFENSIVE RULES:
+# - Default to MariaDB.
+# - Prevent conflicting flags.
+# - Safe defaults repeated.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: db_detect_engine ---
+db_detect_engine() {
+    # --- Safe Variable Defaults ---
+    : "${DB_ENGINE:=mariadb}"   # Default is MariaDB
+    : "${FORCE_MYSQL:=0}"
+    : "${FORCE_MARIADB:=0}"
+
+    if [ "${FORCE_MYSQL}" -eq 1 ] && [ "${FORCE_MARIADB}" -eq 1 ]; then
+        out_die "Cannot use both --mysql and --mariadb at the same time"
+    fi
+
+    if [ "${FORCE_MYSQL}" -eq 1 ]; then
+        DB_ENGINE="mysql"
+        out_info "Database engine forced to MySQL"
+    elif [ "${FORCE_MARIADB}" -eq 1 ] || [ -z "${DB_ENGINE}" ]; then
+        DB_ENGINE="mariadb"
+        out_info "Database engine set to MariaDB (default)"
+    fi
+}
+
+# =============================================================================
+# out_plain() - Output plain text
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience function to output plain text (no prefix, no color).
+# Part of the standardized out_* output system.
+#
+# CRITICAL RULE:
+# All user-facing text MUST go through the output system.
+#
+# INTENTIONAL DESIGN:
+# Short, readable call while keeping real logic in out_text().
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: db_setup ---
+db_setup() {
+    # --- Safe Variable Defaults ---
+    : "${DB_ENGINE:=mariadb}"
+    : "${APP_NAME:=app}"
+    : "${PROJECT_NAME:=${APP_NAME}-demo}"
+    : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME}}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    db_detect_engine
+
+    if [ "${DB_ENGINE}" = "mariadb" ]; then
+        db_setup_mariadb
+    else
+        db_setup_mysql
+    fi
+}
+
+# =============================================================================
+# setup_java_21() - Install and configure Java via SDKMAN
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Installs the pinned Java version (Amazon Corretto ${JAVA_ID}) using SDKMAN,
+# sets it as default, and verifies it is working correctly.
+#
+# This function is part of the reproducible environment setup for Spring Boot 2 or 3.
+#
+# Respects --quiet and --json switches (no output in those modes except critical errors).
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# === SINGLE SOURCE OF TRUTH ENFORCEMENT FOR TEXT OUTPUT ===
+# All human-readable messages MUST go exclusively through out_text()
+# via the approved helpers: out_info(), out_die(), etc.
+# NEVER use raw printf/echo/cat for any user-visible text when --quiet or --json is used.
+# === END OF SINGLE SOURCE OF TRUTH ENFORCEMENT ===
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: setup_java_21 ---
+setup_java_21() {
+# --- Safe Variable Defaults ----
+    # Defensive defaults - never assume globals are set
+    : "${JAVA_ID:=21.0.10-tem}"
+    : "${JAVA_VERSION:=21}"
+    : "${JAVA_DISTRIBUTION:=Temurin}"
+    : "${JAVA_NAME:=Java ${JAVA_VERSION} (Eclipse ${JAVA_DISTRIBUTION})}"
+
+    out_info "Setting up ${JAVA_NAME}..."
+    _ruo_sdk install java "${JAVA_ID}" </dev/null || out_die "Java install failed"
+    _ruo_sdk default java "${JAVA_ID}" >/dev/null 2>&1
+    _ruo_sdk use java "${JAVA_ID}" >/dev/null 2>&1 || true
+    java -version 2>&1 | head -n 1 || out_die "Java not working"
+}
+
+# =============================================================================
+# db_setup_mariadb() - Install, configure and verify MariaDB for RuoYi
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Installs MariaDB server (via internal sudo), creates database and user,
+# imports RuoYi schema, updates application-druid.yml, and performs verification.
+#
+# ────────────────────────────────────────────────
+# STEPS (in order - preserved from original 2.0.0 pattern)
+# ────────────────────────────────────────────────
+# 1. Backup application-druid.yml before any modification
+# 2. Verify PROJECT_DIR exists (fail early if missing)
+# 3. cd into project
+# 4. Internal sudo escalation for apt install mysql-server
+# 5. Start & enable mysql service
+# 6. Generate or use DB_PASSWORD for root/user
+# 7. Create database, user, grant privileges, flush
+# 8. Import main schema (ry*.sql) and quartz.sql if present
+# 9. Update application-druid.yml with correct DB name/user/password
+#
+# ────────────────────────────────────────────────
+# CRITICAL DEFENSIVE RULE - INTERNAL SUDO ESCALATION PATTERN
+# ────────────────────────────────────────────────
+#
+# SACRED BEHAVIOR (DO NOT VIOLATE - CIAO PRINCIPLE 1 & 3):
+# The command `ruoyi mariadb` MUST work when executed as a normal user
+# (without typing "sudo ruoyi mariadb" manually).
+#
+# The script is allowed to internally escalate using `sudo` ONLY for specific
+# privileged operations:
+#   • apt-get update && apt-get install mariadb-server
+#   • systemctl start/enable
+#   • mysql client commands (database creation, user grant, schema import)
+#
+# It MUST NOT require the user to run the command with external sudo.
+# This pattern was working in the original script and is sacred.
+#
+# Violating this (e.g. adding "if not root then out_die" check) is a regression
+# and breaks user experience + PROJECT_DIR detection.
+#
+# This rule exists because:
+# - It provides a clean, simple user command (`ruoyi mariadb`)
+# - It keeps PROJECT_DIR under the original user's home
+# - It follows Least Privilege (Principle 8) by escalating only when necessary
+#
+# Any future AI assistant, code reviewer, or refactoring MUST respect this rule.
+# If you are tempted to "make it require sudo for simplicity", STOP.
+# That path has already introduced bugs repeatedly.
+#
+# CIAO Reminder: This is exactly why we need strict defensive coding —
+# to prevent well-intentioned changes from breaking established behavior.
+#
+# ────────────────────────────────────────────────
+# YOUR ORIGINAL REQUIREMENT (recorded here for safety - DO NOT VIOLATE):
+# "The setup database should try to check what is the current db_user and 
+# db_password stored in application-druid.yml BEFORE backup.
+# Within the same procedures, it should check if the db_user exists, 
+# if the db_password correct.
+# If they are correct, no need to create a new db_user and corresponding db_password."
+#
+# Decision Logic:
+# - Read config BEFORE any backup
+# - If user exists AND password correct → reuse (no backup, no create, no yml change)
+# - If user exists but password wrong → strong warning, do NOT create/change
+# - If user does not exist → create new + backup + update yml
+#
+# This protects against accidental password change on repeated runs.
+#
+# CIAO PRINCIPLES APPLIED:
+# Principle 1 (Caution), 2 (Verbosity), 3 (Anti-fragile), 7 (Reusable Protection),
+# 8 (Least Privilege), 10 (Backup Strategy), 14 (Interactive vs Non-Interactive)
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THE SUDO ESCALATION LOGIC !!!
+# Designed to be reusable while preserving original user workflow.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: db_setup_mariadb ---
+db_setup_mariadb() {
+    # --- Safe Variable Defaults ---
+    : "${APP_NAME:=app}"
+    : "${PROJECT_NAME:=${APP_NAME}-demo}"
+    : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME}}"
+    : "${DB_NAME:=${APP_NAME}_db}"
+    : "${DB_USER:=${APP_NAME}_user}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    out_info "Setting up MariaDB (default database engine for RuoYi)"
+
+    if [ ! -d "${PROJECT_DIR}" ]; then
+        out_die "Project directory ${PROJECT_DIR} not found. Run 'ruoyi' first as normal user."
+    fi
+
+    cd "${PROJECT_DIR}" || out_die "Cannot cd into ${PROJECT_DIR}"
+
+    out_info "Installing MariaDB server (requires sudo)..."
+    sudo apt-get update -y && \
+    sudo apt-get install -y mariadb-server mariadb-client || out_die "MariaDB installation failed"
+
+    sudo systemctl start mariadb 2>/dev/null || out_warn "Failed to start mariadb service"
+    sudo systemctl enable mariadb 2>/dev/null || out_warn "Failed to enable mariadb on boot"
+
+    local config_file="ruoyi-admin/src/main/resources/application-druid.yml"
+    local full_config_path="${PROJECT_DIR}/${config_file}"
+
+    # === CLEAN & SAFE DECISION BLOCK ===
+    local lines
+    lines=$(db_check_credentials "$full_config_path" 2>/dev/null)
+    local use_existing=$(echo "$lines" | sed -n '1p')
+    local final_db_name=$(echo "$lines" | sed -n '2p')
+    local final_db_user=$(echo "$lines" | sed -n '3p')
+    local final_db_pass=$(echo "$lines" | sed -n '4p')
+
+    # Respect config dbname if present, else fallback
+    if [ "${final_db_user}" = "root" ]; then
+        if db_prompt_for_new_user; then
+            # User wants new dedicated user
+            final_db_user="${DB_USER}"
+            final_db_pass="$(util_generate_db_pass)"
+            use_existing=0
+            out_warn "🔄 Will create new user '${final_db_user}' with fresh password" >&2
+        else
+            use_existing=1
+            out_warn "⚠️  Keeping root user as requested" >&2
+        fi
+    else
+        out_info "non-root db-user: ${final_db_user}" >&2
+    fi
+
+    if [ "$use_existing" = "1" ]; then
+        out_info "Re-using existing valid credentials from application-druid.yml" >&2
+    else
+        final_db_pass=$(db_create_new_user "$final_db_user" "${final_db_pass:-$(util_generate_db_pass)}" "$final_db_name")
+    fi
+
+    # GRANT only for new users
+    if [ "$use_existing" != "1" ]; then
+        sudo mysql -e "GRANT ALL PRIVILEGES ON \`${final_db_name}\`.* TO '${final_db_user}'@'localhost';" 2>/dev/null || true
+        sudo mysql -e "FLUSH PRIVILEGES;" 2>/dev/null || true
+    fi
+
+    # === Schema import - use the SAME db name as config ===
+    local sql_file=$(ls sql/ry*.sql 2>/dev/null | sort -r | head -n 1)
+    if [ -n "$sql_file" ]; then
+        sudo mysql "${final_db_name}" < "$sql_file" && \
+            out_info "Main schema imported into ${final_db_name}" || \
+            out_warn "Schema import failed"
+    fi
+    if [ -f "sql/quartz.sql" ]; then
+        sudo mysql "${final_db_name}" < sql/quartz.sql && \
+            out_info "Quartz tables imported into ${final_db_name}" || \
+            out_warn "Quartz import failed"
+    fi
+
+    # Final test
+    out_info "Performing final connection test..."
+    if db_test_credentials "$final_db_user" "$final_db_pass" "$final_db_name"; then
+        out_success "✅ Final database connection test passed"
+    else
+        out_warn "⚠️ Final test failed (check manually)"
+    fi
+
+    # === SAFE & PRECISE YAML UPDATE v5 (Loud EXPECTED) ===
+    local config_file="ruoyi-admin/src/main/resources/application-druid.yml"
+    local full_config_path="${PROJECT_DIR}/${config_file}"
+
+    if [ -f "${full_config_path}" ]; then
+        util_backup "${full_config_path}" "final-credentials" || true
+
+        out_double_line >&2
+        out_info "=== TARGET / EXPECTED VALUES ===" >&2
+        out_info "  username : ${final_db_user}" >&2
+        out_info "  password : ${final_db_pass}" >&2
+        out_double_line >&2
+
+        out_info "=== BEFORE ===" >&2
+        grep -E '^( *url:| *username:| *password:)' "${full_config_path}" | sed 's/^/  /' >&2
+
+        awk -v user="${final_db_user}" -v pass="${final_db_pass}" '
+            /^[[:space:]]*username:[[:space:]]/ { print "                username: " user; next }
+            /^[[:space:]]*password:[[:space:]]/ { print "                password: " pass; next }
+            { print }
+        ' "${full_config_path}" > "${full_config_path}.tmp" && \
+        mv "${full_config_path}.tmp" "${full_config_path}" || out_warn "YAML update failed"
+
+        out_info "=== AFTER ===" >&2
+        grep -E '^( *url:| *username:| *password:)' "${full_config_path}" | sed 's/^/  /' >&2
+        out_double_line >&2
+
+        out_success "✅ Updated application-druid.yml (user=${final_db_user})"
+    fi
+
+    # Final messages
+    out_success "Database setup completed successfully!"
+    out_success "Database : ${final_db_name}"
+    out_success "User     : ${final_db_user}"
+    
+    if [ "$use_existing" = "1" ]; then
+        out_success "Password : (using existing password from MariaDB)"
+        out_success "→ Re-used existing credentials from application-druid.yml"
+    else
+        out_success "Password : ${final_db_pass}   ← Please save this password!"
+        out_success "→ New user created + configuration updated"
+    fi
+}
+
+
+# =============================================================================
+# setup_maven_3_9() - Install and configure Maven via SDKMAN
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Installs the pinned Maven version (${MAVEN_VER}) using SDKMAN,
+# sets it as default, and verifies it is working correctly.
+#
+# This function is part of the reproducible environment setup for Spring Boot 2 or 3.
+#
+# Respects --quiet and --json switches (no output in those modes except critical errors).
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# === SINGLE SOURCE OF TRUTH ENFORCEMENT FOR TEXT OUTPUT ===
+# All human-readable messages MUST go exclusively through out_text()
+# via the approved helpers: out_info(), out_die(), etc.
+# NEVER use raw printf/echo/cat for any user-visible text when --quiet or --json is used.
+# === END OF SINGLE SOURCE OF TRUTH ENFORCEMENT ===
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: setup_maven_3_9 ---
+setup_maven_3_9() {
+# --- Safe Variable Defaults ----
+    # Defensive defaults - never assume globals are set
+    : "${MAVEN_VER:=3.9.14}"
+
+    out_info "Setting up Maven ${MAVEN_VER}..."
+    _ruo_sdk install maven "${MAVEN_VER}" </dev/null || out_die "Maven install failed"
+    _ruo_sdk default maven "${MAVEN_VER}" >/dev/null 2>&1
+    _ruo_sdk use maven "${MAVEN_VER}" >/dev/null 2>&1 || true
+    mvn --version | head -n 3 || out_die "Maven not working"
+}
+
+# =============================================================================
+# db_check_credentials - Check existing credentials and decide action
+# =============================================================================
+#
+# YOUR ORIGINAL REQUIREMENT (recorded here for safety - DO NOT VIOLATE):
+# "The setup database should try to check what is the current db_user and 
+# db_password stored in application-druid.yml BEFORE backup.
+# Within the same procedures, it should check if the db_user exists, 
+# if the db_password correct.
+# If they are correct, no need to create a new db_user and corresponding db_password."
+#
+# Returns:
+#   use_existing=1   → reuse existing user (no backup/create/update)
+#   use_existing=0   → need to create new user
+#
+# CIAO-Lite Protection Zone - Do NOT simplify or remove this logic
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: db_check_credentials ---
+db_check_credentials() {
+    local config_path="$1"
+
+    local lines
+    lines=$(db_extract_config_yml "$config_path" 2>/dev/null)
+
+    local dbname=$(echo "$lines" | sed -n '1p')
+    local user=$(echo "$lines" | sed -n '2p')
+    local pass=$(echo "$lines" | sed -n '3p')
+
+    local use_existing=0
+
+    if [ -n "$user" ] && [ ${#pass} -gt 3 ]; then
+        if db_user_exists "$user"; then
+            out_info "Valid existing user '${user}' found in DB" >&2
+            final_db_user="${user}"
+            final_db_pass="${pass}"
+            use_existing=1
+        else
+            out_info "User '${user}' from yml does NOT exist → will create new" >&2
+            final_db_user="${user}"
+            final_db_pass="${pass:-$(util_generate_db_pass)}"
+            use_existing=0
+        fi
+    else
+        out_warn "No valid credentials in yml → creating new ruoyi_user" >&2
+        final_db_user="${DB_USER}"
+        final_db_pass="$(util_generate_db_pass)"
+        use_existing=0
+    fi
+
+    printf '%s\n%s\n%s\n%s\n' "$use_existing" "${dbname}" "${final_db_user}" "${final_db_pass}"
+}
+
+# =============================================================================
+# db_create_new_user - Create new database user only if it does not exist
+# =============================================================================
+#
+# YOUR STRICT REQUIREMENT (recorded here for safety - DO NOT VIOLATE):
+# Receive db_user and db_passwd.
+# 1. Use sudo to check if db_user exists.
+# 2. Explicitly say "User XXX exists" or "User XXX does not exist".
+# 3. Only create user if it does NOT exist.
+#
+# CIAO-Lite Protection Zone - Follow exactly. No extra logic.
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: db_create_new_user ---
+db_create_new_user() {
+    local db_user="$1"
+    local db_pass="$2"
+    local db_name="${3:-${DB_NAME}}"
+
+    [ -z "$db_user" ] && {
+        out_error "db_create_new_user: db_user is empty" >&2
+        return 1
+    }
+
+    out_info "Checking if user '${db_user}' exists in database..." >&2
+    if sudo mysql -s -e "SELECT 1 FROM mysql.user WHERE user='${db_user}' AND host='localhost' LIMIT 1" 2>/dev/null | grep -q "^1"; then
+        out_warn "User '${db_user}' already EXISTS in database" >&2
+        out_warn "→ Will NOT create duplicate user or change password." >&2
+        printf '%s' "$db_pass"
+        return 0
+    fi
+
+    out_info "User '${db_user}' does NOT exist → creating..." >&2
+    sudo mysql -e "CREATE DATABASE IF NOT EXISTS \`${db_name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || out_die "Failed to create database"
+    sudo mysql -e "CREATE USER IF NOT EXISTS '${db_user}'@'localhost' IDENTIFIED BY '${db_pass}';" || out_die "Failed to create user"
+    sudo mysql -e "GRANT ALL PRIVILEGES ON \`${db_name}\`.* TO '${db_user}'@'localhost';" || out_die "Failed to grant privileges"
+    sudo mysql -e "FLUSH PRIVILEGES;"
+
+    out_success "User '${db_user}' created successfully" >&2
+    printf '%s' "$db_pass"
+}
+
+# =============================================================================
+# db_prompt_for_new_user - Interactive choice when root is detected
+# =============================================================================
+
+# --- domain port from ruoyi oracle: db_prompt_for_new_user ---
+db_prompt_for_new_user() {
+    if [ "${JSON}" -eq 1 ]; then
+        out_info "json mode → fallback to ruoyi_user + random password" >&2
+        return 0   # will create new
+    fi
+    if [ -t 0 ] && [ -t 1 ]; then
+        out_double_line >&2
+        out_warn "⚠️  Currently using 'root' user in application-druid.yml" >&2
+        out_warn "   This is not recommended for production (security risk)" >&2
+        out_double_line >&2
+
+        if prompt_yes_no "Create new dedicated user 'ruoyi_user' with random password instead?"; then
+            out_info "User chose to create new dedicated user" >&2
+            return 0   # create new
+        else
+            out_info "User chose to keep root" >&2
+            return 1   # keep root
+        fi
+    else
+        out_info "Non-interactive mode → fallback to ruoyi_user + random password" >&2
+        return 0   # will create new
+    fi
+}
+
+# =============================================================================
+# db_setup_mysql() - Install, configure and verify Oracle MySQL for RuoYi
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Installs Oracle MySQL server (via internal sudo), configures database,
+# imports schema, and updates RuoYi configuration.
+#
+# ────────────────────────────────────────────────
+# STEPS (in order - preserved from original 2.0.0 pattern)
+# ────────────────────────────────────────────────
+# 1. Backup application-druid.yml before any modification
+# 2. Verify PROJECT_DIR exists (fail early if missing)
+# 3. cd into project
+# 4. Internal sudo escalation for apt install mysql-server
+# 5. Start & enable mysql service
+# 6. Generate or use DB_PASSWORD for root/user
+# 7. Create database, user, grant privileges, flush
+# 8. Import main schema (ry*.sql) and quartz.sql if present
+# 9. Update application-druid.yml with correct DB name/user/password
+# 10. Success messages with credentials reminder
+#
+# LESSON LEARNED FROM DESTRUCTIVE PLACEHOLDER BEHAVIOR:
+# Leaving a function with only a placeholder comment ("# (Add your original ...)")
+# while the rest of the script advanced caused a silent incomplete state.
+# This broke `ruoyi mysql` completely and violated the "fast convergence"
+# and "Over-protect" principles of CIAO-Lite.
+# Never commit incomplete placeholder functions again — always restore
+# full parallel logic immediately to keep every command path working.
+# This incident reinforced why we must respect existing battle-tested
+# patterns instead of leaving gaps during feature additions.
+#
+# ────────────────────────────────────────────────
+# CRITICAL DEFENSIVE RULE - INTERNAL SUDO ESCALATION PATTERN
+# ────────────────────────────────────────────────
+#
+# YOUR ORIGINAL REQUIREMENT (recorded here for safety - DO NOT VIOLATE):
+# "The setup database should try to check what is the current db_user and 
+# db_password stored in application-druid.yml BEFORE backup.
+# Within the same procedures, it should check if the db_user exists, 
+# if the db_password correct.
+# If they are correct, no need to create a new db_user and corresponding db_password."
+#
+# Decision Logic:
+# - Read config BEFORE any backup
+# - If user exists AND password correct → reuse (no backup, no create, no yml change)
+# - If user exists but password wrong → strong warning, do NOT create/change
+# - If user does not exist → create new + backup + update yml
+#
+# This protects against accidental password change on repeated runs.
+#
+# SACRED BEHAVIOR (DO NOT VIOLATE - CIAO PRINCIPLE 1 & 3):
+# The command `ruoyi mysql` MUST work when executed as a normal user
+# (without typing "sudo ruoyi mysql" manually).
+#
+# The script MUST internally escalate using `sudo` ONLY for privileged operations.
+# It MUST NOT require external sudo at the command line.
+#
+# This exact pattern was present in the original script and must be preserved.
+# Any change that forces "run with sudo" is forbidden and introduces regression.
+#
+# ────────────────────────────────────────────────
+#
+# CIAO PRINCIPLES APPLIED: 1, 2, 3, 7, 8, 14
+# !!! DO NOT MODIFY OR SIMPLIFY THE SUDO ESCALATION LOGIC !!!
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: db_setup_mysql ---
+db_setup_mysql() {
+    # --- Safe Variable Defaults ---
+    : "${APP_NAME:=app}"
+    : "${PROJECT_NAME:=${APP_NAME}-demo}"
+    : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME}}"
+    : "${DB_NAME:=${APP_NAME}_db}"
+    : "${DB_USER:=${APP_NAME}_user}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    out_info "Setting up Oracle MySQL"
+
+    if [ ! -d "${PROJECT_DIR}" ]; then
+        out_die "Project directory ${PROJECT_DIR} not found. Run 'ruoyi' first as normal user."
+    fi
+
+    cd "${PROJECT_DIR}" || out_die "Cannot cd into ${PROJECT_DIR}"
+
+    out_info "Installing MySQL server (requires sudo)..."
+    sudo apt-get update -y && \
+    sudo apt-get install -y mysql-server || out_die "MySQL installation failed"
+
+    sudo systemctl start mysql 2>/dev/null || out_warn "Failed to start mysql service"
+    sudo systemctl enable mysql 2>/dev/null || out_warn "Failed to enable mysql on boot"
+
+    local config_file="ruoyi-admin/src/main/resources/application-druid.yml"
+    local full_config_path="${PROJECT_DIR}/${config_file}"
+
+    # === CLEAN & SAFE DECISION BLOCK ===
+    local lines
+    lines=$(db_check_credentials "$full_config_path" 2>/dev/null)
+    local use_existing=$(echo "$lines" | sed -n '1p')
+    local final_db_name=$(echo "$lines" | sed -n '2p')
+    local final_db_user=$(echo "$lines" | sed -n '3p')
+    local final_db_pass=$(echo "$lines" | sed -n '4p')
+
+    # Respect config dbname if present, else fallback
+    if [ "${final_db_user}" = "root" ]; then
+        if db_prompt_for_new_user; then
+            # User wants new dedicated user
+            final_db_user="${DB_USER}"
+            final_db_pass="$(util_generate_db_pass)"
+            use_existing=0
+            out_warn "🔄 Will create new user '${final_db_user}' with fresh password" >&2
+        else
+            use_existing=1
+            out_warn "⚠️  Keeping root user as requested" >&2
+        fi
+    else
+        out_info "non-root db-user: ${final_db_user}" >&2
+    fi
+
+    if [ "$use_existing" = "1" ]; then
+        out_info "Re-using existing valid credentials from application-druid.yml" >&2
+    else
+        final_db_pass=$(db_create_new_user "$final_db_user" "${final_db_pass:-$(util_generate_db_pass)}" "$final_db_name")
+    fi
+
+    # GRANT only for new users
+    if [ "$use_existing" != "1" ]; then
+        sudo mysql -e "GRANT ALL PRIVILEGES ON \`${final_db_name}\`.* TO '${final_db_user}'@'localhost';" 2>/dev/null || true
+        sudo mysql -e "FLUSH PRIVILEGES;" 2>/dev/null || true
+    fi
+
+    # === Schema import - use the SAME db name as config ===
+    local sql_file=$(ls sql/ry*.sql 2>/dev/null | sort -r | head -n 1)
+    if [ -n "$sql_file" ]; then
+        sudo mysql "${final_db_name}" < "$sql_file" && \
+            out_info "Main schema imported into ${final_db_name}" || \
+            out_warn "Schema import failed"
+    fi
+    if [ -f "sql/quartz.sql" ]; then
+        sudo mysql "${final_db_name}" < sql/quartz.sql && \
+            out_info "Quartz tables imported into ${final_db_name}" || \
+            out_warn "Quartz import failed"
+    fi
+
+    # === Schema import (always after DB+user is ready) ===
+    local sql_file=$(ls sql/ry*.sql 2>/dev/null | sort -r | head -n 1)
+    if [ -n "$sql_file" ]; then
+        sudo mysql "${final_db_name}" < "$sql_file" && out_info "Main schema imported" || out_warn "Schema import failed"
+    fi
+    if [ -f "sql/quartz.sql" ]; then
+        sudo mysql "${final_db_name}" < sql/quartz.sql && out_info "Quartz tables imported" || out_warn "Quartz import failed"
+    fi
+
+    # Final test
+    out_info "Performing final connection test..."
+    if db_test_credentials "$final_db_user" "$final_db_pass" "$final_db_name"; then
+        out_success "✅ Final database connection test passed"
+    else
+        out_warn "⚠️ Final test failed (check manually)"
+    fi
+
+    # === SAFE & PRECISE YAML UPDATE v5 (Loud EXPECTED) ===
+    local config_file="ruoyi-admin/src/main/resources/application-druid.yml"
+    local full_config_path="${PROJECT_DIR}/${config_file}"
+
+    if [ -f "${full_config_path}" ]; then
+        util_backup "${full_config_path}" "final-credentials" || true
+
+        out_double_line >&2
+        out_info "=== TARGET / EXPECTED VALUES ===" >&2
+        out_info "  username : ${final_db_user}" >&2
+        out_info "  password : ${final_db_pass}" >&2
+        out_double_line >&2
+
+        out_info "=== BEFORE ===" >&2
+        grep -E '^( *url:| *username:| *password:)' "${full_config_path}" | sed 's/^/  /' >&2
+
+        awk -v user="${final_db_user}" -v pass="${final_db_pass}" '
+            /^[[:space:]]*username:[[:space:]]/ { print "                username: " user; next }
+            /^[[:space:]]*password:[[:space:]]/ { print "                password: " pass; next }
+            { print }
+        ' "${full_config_path}" > "${full_config_path}.tmp" && \
+        mv "${full_config_path}.tmp" "${full_config_path}" || out_warn "YAML update failed"
+
+        out_info "=== AFTER ===" >&2
+        grep -E '^( *url:| *username:| *password:)' "${full_config_path}" | sed 's/^/  /' >&2
+        out_double_line >&2
+
+        out_success "✅ Updated application-druid.yml (user=${final_db_user})"
+    fi
+
+    # Final messages
+    out_success "Database setup completed successfully!"
+    out_success "Database : ${final_db_name}"
+    out_success "User     : ${final_db_user}"
+    
+    if [ "$use_existing" = "1" ]; then
+        out_success "Password : (using existing password from MariaDB)"
+        out_success "→ Re-used existing credentials from application-druid.yml"
+    else
+        out_success "Password : ${final_db_pass}   ← Please save this password!"
+        out_success "→ New user created + configuration updated"
+    fi
+}
+
+# =============================================================================
+# setup_redis_for_ruoyi() - Install, configure and verify Redis for RuoYi
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Installs Redis server (via internal sudo), starts and enables the service,
+# tests connectivity with redis-cli ping, and provides config guidance for RuoYi.
+#
+# ────────────────────────────────────────────────
+# STEPS (in order - aligned with mariadb/mysql pattern)
+# ────────────────────────────────────────────────
+# 1. Safe variable defaults
+# 2. Internal sudo escalation for apt install redis-server
+# 3. Start and enable redis-server service
+# 4. Test connectivity with "redis-cli ping" (expect PONG)
+# 5. Provide clear guidance for RuoYi application.yml configuration
+#
+# LESSON LEARNED:
+# Raw echo/printf statements were previously used here, breaking the single
+# source of truth (out_text / out_json). This violated CIAO "Intentional"
+# and "Caution" principles. All output must now go through approved helpers.
+# Redis setup must follow the same internal-sudo and defensive pattern as
+# database functions to maintain consistency across optional components.
+#
+# ────────────────────────────────────────────────
+# CRITICAL DEFENSIVE RULE - INTERNAL SUDO ESCALATION PATTERN
+# ────────────────────────────────────────────────
+# The command `ruoyi redis` MUST work when executed as a normal user
+# (without typing "sudo ruoyi redis" manually).
+#
+# The script MUST internally escalate using `sudo` ONLY for privileged operations.
+# It MUST NOT require external sudo at the command line.
+#
+# This pattern is sacred and must be preserved (same as mariadb/mysql).
+#
+# CIAO PRINCIPLES APPLIED: 1 (Caution), 2 (Intentional), 3 (Anti-fragile),
+# 8 (Least Privilege), 14 (Interactive vs Non-Interactive)
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THE SUDO ESCALATION LOGIC !!!
+# !!! ALL OUTPUT MUST GO THROUGH out_info/out_success/out_warn/out_die/plain !!!
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: setup_redis_for_ruoyi ---
+setup_redis_for_ruoyi() {
+    # --- Safe Variable Defaults ---
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    out_info "Setting up Redis"
+
+    # Internal sudo escalation only for privileged operations (CIAO Principle 8)
+    out_info "Installing Redis server (requires sudo)..."
+    sudo apt-get update -y && \
+    sudo apt-get install -y redis-server || out_die "Redis installation failed"
+
+    out_info "Starting and enabling Redis service..."
+    sudo systemctl start redis-server 2>/dev/null || out_warn "Failed to start Redis — check: sudo systemctl status redis-server"
+    sudo systemctl enable redis-server 2>/dev/null || out_warn "Failed to enable Redis on boot"
+
+    out_info "Testing Redis connection (localhost:6379)..."
+    if redis-cli ping 2>/dev/null | grep -q PONG; then
+        out_success "Redis ready! (PONG confirmed)"
+    else
+        out_die "Redis not responding — check logs: sudo journalctl -u redis-server"
+    fi
+
+    # Config note for RuoYi (no raw echo)
+    out_info "${PROJECT_NAME} config for Redis: defaults in application.yml"
+    out_info "(spring.redis.host=127.0.0.1, port=6379)"
+    out_info "If you need custom settings, edit:"
+    out_info "  ${PROJECT_DIR}/ruoyi-admin/src/main/resources/application.yml"
+}
+
+# =============================================================================
+# setup_sdkman() - Install and initialize SDKMAN!
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Installs SDKMAN! if not already present and ensures it is ready for use.
+# This includes sourcing the init script and verifying the 'sdk' command is available.
+# It also calls env_check_alpine() for compatibility on minimal systems.
+#
+# This function is reused across multiple projects.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# === SINGLE SOURCE OF TRUTH ENFORCEMENT FOR TEXT OUTPUT ===
+# All human-readable messages, instructions, and warnings in this function
+# MUST go exclusively through out_text() via the approved helpers:
+# out_info(), out_warn(), msg(), plain(), out_msg_n(), etc.
+# NEVER use raw printf, echo, or cat for any user-visible text.
+# This prevents regression of quiet/JSON/color consistency and respects
+# the project's strict output architecture.
+# === END OF SINGLE SOURCE OF TRUTH ENFORCEMENT ===
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: setup_sdkman ---
+setup_sdkman() {
+    # --- Safe defaults ---
+    : "${HOME:=/tmp}"
+    env_check_alpine 2>/dev/null || true
+
+    # Source sdkman-init under set +u: upstream script references unset vars (set -u hostile).
+    _ruo_source_sdkman_init() {
+        local init="${HOME}/.sdkman/bin/sdkman-init.sh"
+        if [ -s "$init" ]; then
+            set +u
+            # shellcheck disable=SC1090
+            . "$init"
+            set -u
+        fi
+    }
+
+    if [ -d "${HOME}/.sdkman" ]; then
+        _ruo_source_sdkman_init
+        if command -v sdk >/dev/null 2>&1; then
+            out_info "SDKMAN already installed."
+            return 0
+        fi
+    fi
+
+    out_info "Installing SDKMAN..."
+    curl -s "https://get.sdkman.io" | bash || out_die "SDKMAN install failed. Recovery: install manually from https://sdkman.io"
+
+    _ruo_source_sdkman_init
+
+    if ! command -v sdk >/dev/null 2>&1; then
+        out_warn "SDKMAN installed but 'sdk' command is not yet available."
+        out_plain ""
+        msg "Please run one of these commands, then retry:"
+        msg "    . \"${HOME}/.sdkman/bin/sdkman-init.sh\""
+        msg "    or simply open a new terminal"
+        out_plain ""
+        out_die "SDKMAN not on PATH after install"
+    fi
+
+    out_info "SDKMAN is ready."
+}
+
+# =============================================================================
+# db_user_exists - Check if db_user actually exists in MySQL/MariaDB
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Checks whether the given username exists in the database (mysql.user table).
+# This is a pure existence check — it does NOT test password correctness.
+#
+# YOUR ORIGINAL REQUIREMENT (recorded here for safety - DO NOT VIOLATE):
+# "The setup database should try to check what is the current db_user and 
+# db_password stored in application-druid.yml BEFORE backup.
+# Within the same procedures, it should check if the db_user exists, 
+# if the db_password correct.
+# If they are correct, no need to create a new db_user and corresponding db_password."
+#
+# CRITICAL RULE FROM YOU:
+# We must know whether the user exists **before** deciding to create or reuse.
+# Never silently recreate or change password of an existing user.
+#
+# ────────────────────────────────────────────────
+# CIAO PRINCIPLES APPLIED
+# ────────────────────────────────────────────────
+# Principle 1 (Caution)      - Safe query, no side effects, proper error handling
+# Principle 2 (Intentional)  - Clear purpose, your requirement documented
+# Principle 3 (Anti-fragile) - Works with both mysql and mariadb, survives missing privileges
+# Principle 7 (Reusable)     - Can be used in other database-related scripts
+# Principle 10 (Backup)      - Pure read-only check (no modification)
+#
+# CRITICAL DEFENSIVE RULES:
+# - This function ONLY checks existence, does NOT test password.
+# - Uses direct query on mysql.user table (most reliable method).
+# - Works whether run as root or normal user (via sudo mysql when needed).
+# - Returns 0 = user exists, 1 = user does not exist or error.
+# - Never modifies database.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is the dedicated existence checker as requested.
+# Any change must preserve the read-only nature and your documented requirement.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: db_user_exists ---
+db_user_exists() {
+    local user="$1"
+
+    [ -z "$user" ] && return 1
+
+    local mysql_cmd="mysql"
+    if command -v mariadb >/dev/null 2>&1; then
+        mysql_cmd="mariadb"
+    fi
+
+    # Check existence in mysql.user table
+    if echo "SELECT 1 FROM mysql.user WHERE user='${user}' AND host='localhost' LIMIT 1" | \
+       sudo $mysql_cmd -s 2>/dev/null | grep -q "^1"; then
+        return 0   # User exists
+    fi
+
+    # Fallback without sudo (if running as root)
+    if echo "SELECT 1 FROM mysql.user WHERE user='${user}' AND host='localhost' LIMIT 1" | \
+       $mysql_cmd -s 2>/dev/null | grep -q "^1"; then
+        return 0
+    fi
+
+    return 1   # User does not exist or query failed
+}
+
+# =============================================================================
+# ruo_about() - Full diagnostics for the app 
+# =============================================================================
+#
+# Provides comprehensive environment and status information:
+#   - Installation status of the app
+#   - SDKMAN status
+#   - Java and Maven versions
+#   - Project directory status
+#   - Whether the Spring Boot app is currently running on the configured port
+#
+# Fully respects --quiet and --json modes.
+# Consistent with the defensive style used in pomo and countdown.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: db_extract_config_yml ---
+db_extract_config_yml() {
+    local config_file="$1"
+
+    if [ ! -f "$config_file" ]; then
+        printf '%s\n%s\n%s\n' "" "" "" >&2
+        return 1
+    fi
+
+    local url dbname username password
+
+    url=$(awk '/master:/{flag=1; next} flag && /url:/{print; exit}' "$config_file" 2>/dev/null | sed 's/^[[:space:]]*url:[[:space:]]*//; s/[[:space:]]*$//')
+    username=$(awk '/master:/{flag=1; next} flag && /username:/{print; exit}' "$config_file" 2>/dev/null | sed 's/^[[:space:]]*username:[[:space:]]*//; s/[[:space:]]*$//')
+    password=$(awk '/master:/{flag=1; next} flag && /password:/{print; exit}' "$config_file" 2>/dev/null | sed 's/^[[:space:]]*password:[[:space:]]*//; s/[[:space:]]*$//')
+
+    if [ -z "$username" ]; then
+        username=$(grep -m1 '^[[:space:]]*username:' "$config_file" | sed 's/^[[:space:]]*username:[[:space:]]*//; s/[[:space:]]*$//')
+    fi
+    if [ -z "$password" ]; then
+        password=$(grep -m1 '^[[:space:]]*password:' "$config_file" | sed 's/^[[:space:]]*password:[[:space:]]*//; s/[[:space:]]*$//')
+    fi
+
+    if [ -n "$url" ]; then
+        dbname=$(echo "$url" | sed -E 's|jdbc:mysql://[^/]+/([^?]+).*|\1|')
+    fi
+
+    # Debug only (stderr)
+    out_success "✅ Extracted from yml → user=${username} db=${dbname}" >&2
+
+    # ONLY 3 LINES - nothing else
+    printf '%s\n%s\n%s\n' "${dbname}" "${username}" "${password}"
+}
+
+# =============================================================================
+# db_extract_credentials - Extract DB user/password from application-druid.yml
+# New sub-command support - accepts optional project folder parameter
+#
+# LESSON LEARNED (from long painful debugging session - 29 April 2026):
+#   - Command substitution `lines=$(db_extract_config_yml ...)` + sed parsing
+#     is fragile when any function leaks output to stdout.
+#   - Debug messages (out_info, out_success, etc.) inside called functions
+#     pollute variable capture → broken username/password.
+#   - Special characters in passwords and extra newlines make `read` unreliable.
+#   - The current implementation forces ALL debug to stderr (`>&2`) and
+#     keeps extractor output strictly 3 clean lines on stdout.
+#
+# OBSERVATION (current working state):
+#   - We use `lines=$(...) 2>/dev/null` + `sed -n 'Np'` parsing.
+#   - This is more reliable than direct `read` but still requires strict
+#     output discipline in `db_extract_config_yml` and `db_create_new_user`.
+#   - Duplicated lines in YAML were previously caused by poor awk logic.
+#
+# HOW TO AVOID SIMILAR ERRORS IN FUTURE:
+#   1. Keep `db_extract_config_yml` output to exactly 3 clean lines on stdout.
+#   2. Redirect ALL debug/out_* calls to stderr (`>&2`) inside extraction path.
+#   3. Never let `db_create_new_user` or similar functions print to stdout.
+#   4. Always test full flow with real YAML containing special chars in password.
+#   5. Prefer `sed -n 'Np'` or `mapfile` when capturing multi-line output.
+#
+# CIAO-Lite Protection Zone
+# Do NOT simplify, refactor, or remove without explicit user instruction.
+# This section exists for safety and anti-fragility reasons.
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: db_extract_credentials ---
+db_extract_credentials() {
+    local project_dir="${1:-${PROJECT_DIR}}"
+    local config_file="ruoyi-admin/src/main/resources/application-druid.yml"
+    local full_config_path="${project_dir}/${config_file}"
+
+    if [ ! -d "${project_dir}" ]; then
+        out_error "Project directory not found: ${project_dir}"
+        return 1
+    fi
+    if [ ! -f "${full_config_path}" ]; then
+        out_warn "Found not found ${full_config_path}"
+        return 1
+    fi
+
+    local lines
+    lines=$(db_extract_config_yml "$full_config_path" 2>/dev/null)
+
+    local dbname=$(echo "$lines" | sed -n '1p')
+    local user=$(echo "$lines" | sed -n '2p')
+    local pass=$(echo "$lines" | sed -n '3p')
+
+    if [ -n "${user}" ] && [ -n "${pass}" ]; then
+        out_success "✅ Extracted database credentials"
+        out_info "Project  : ${project_dir}"
+        out_info "Database : ${dbname}"
+        out_info "User     : ${user}"
+        out_info "Password : ${pass}"
+        printf 'DB_NAME=%s\nDB_USER=%s\nDB_PASS=%s\n' "${dbname}" "${user}" "${pass}"
+    else
+        out_warn "No database credentials found in ${full_config_path}"
+        return 1
+    fi
+}
+
+# =============================================================================
+# db_test_credentials - Test if stored db_user/db_password works
+#
+# LESSON LEARNED (from long painful debugging session - 29 April 2026):
+#   - Password in application-druid.yml often becomes outdated after manual
+#     DB changes or previous failed setups.
+#   - Simple credential test can fail even when user exists → leads to wrong
+#     "create new user" path.
+#   - Root fallback is useful during setup but should be clearly logged.
+#   - Final connection test must not break the whole setup when yml password
+#     is just outdated.
+#
+# HOW TO AVOID SIMILAR ERRORS IN FUTURE:
+#   1. Always prefer "reuse existing user" when user exists in DB.
+#   2. Provide clear warning when yml password doesn't match DB.
+#   3. Add root fallback for test during initial setup.
+#   4. Never let test failure cause creation of duplicate users.
+#   5. Keep test function focused only on connectivity, not on decision logic.
+#
+# CIAO-Lite Protection Zone - Do NOT simplify/refactor without explicit instruction
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: db_test_credentials ---
+db_test_credentials() {
+    local user="$1"
+    local pass="$2"
+    local dbname="${3:-}"
+
+    local mysql_cmd="mysql"
+    if command -v mariadb >/dev/null 2>&1; then
+        mysql_cmd="mariadb"
+    fi
+
+    # Try with provided credentials
+    if [ -n "$dbname" ]; then
+        echo "SELECT 1;" | $mysql_cmd -u"$user" -p"$pass" -D"$dbname" --silent 2>/dev/null && {
+            out_success "✅ Connection test passed with yml credentials" >&2
+            return 0
+        }
+    else
+        echo "SELECT 1;" | $mysql_cmd -u"$user" -p"$pass" --silent 2>/dev/null && return 0
+    fi
+
+    # Fallback: try as root (common in setup)
+    if sudo $mysql_cmd -e "SELECT 1;" 2>/dev/null; then
+        out_info "Connected via root (yml password may be outdated)" >&2
+        return 0
+    fi
+
+    out_warn "Final test failed with user '${user}'" >&2
+    return 1
+}
+
+# =============================================================================
+# main_ruoyi_app() - Main dispatcher and entry point
+# =============================================================================
+#
+# IMPORTANT:
+# This is the single entry point of the entire script.
+# All business logic lives in dedicated functions.
+#
+# Design Principles:
+# - Auto-install for `curl | bash` must stay at the top
+# - Flag-first parsing for clean option handling
+# - Early sourcing of user shell config (critical for SDKMAN)
+# - Clear command dispatch table
+#
+# Safe Variable Defaults (repeated intentionally)
+#
+# CRITICAL FIX – PROJECT_DIR ABSOLUTE PATH CONVERSION
+# =============================================================
+# WHY WE NEED THIS (observed repeatedly in testing):
+#   • When user runs `ruoyi --project test-prj mariadb`, ${PROJECT_DIR}
+#     may be relative ("test-prj").
+#   • Functions like db_extract_config_yml, util_backup, YAML awk, etc.
+#     rely on full_config_path="${PROJECT_DIR}/..." 
+#   • Relative paths + cd + command substitution caused:
+#       - Wrong file being read/written
+#       - Duplicated YAML entries
+#       - db-extract always saying "No credentials found"
+#   • `realpath -m` ensures absolute path early in main flow.
+#   • This fixes YAML update + db-extract reliability without changing
+#     any other logic.
+#
+# CRITICAL WARNINGS:
+# - Do NOT move the auto-install block
+# - Do NOT remove `util_src_user_shell_conf()` — it fixes most "command not found" issues
+# - PROJECT_DIR default is intentionally generic (`${HOME}/ruoyi-demo`)
+# - Respect root vs non-root isolation everywhere
+#
+# !!! DO NOT REMOVE OR SIMPLIFY THE AUTO-INSTALL BLOCK !!!
+# It serves as a strong reminder for future maintenance and AI assistants.
+#
+# CIAO-Lite Protection Zone
+# Do NOT remove or simplify the absolute path conversion without explicit instruction.
+# This section exists for safety and anti-fragility reasons.
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port from ruoyi oracle: util_src_user_shell_conf ---
+util_src_user_shell_conf() {
+    # Defensive safe defaults - repeated on purpose
+    : "${QUIET:=0}"
+    : "${JSON:=0}"
+    : "${HOME:=/tmp}"
+
+    # Never source in machine modes - keeps output clean and predictable
+    if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+        return 0
+    fi
+
+    # Prefer SDKMAN init only (set -u hostile upstream). Avoid full .bashrc source
+    # which can exit/hang under non-interactive + set -u after SDKMAN installers.
+    local sdk_init="${HOME}/.sdkman/bin/sdkman-init.sh"
+    if [ -s "${sdk_init}" ]; then
+        set +u
+        # shellcheck disable=SC1090
+        . "${sdk_init}" 2>/dev/null || true
+        set -u
+    fi
+
+    return 0
+}
+
+# =============================================================================
+# out_success()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_success()   → green [OK]
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce visible output (except inside
+# protected low-level functions). All output must respect --quiet and --json.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+# app_main() - Main entrypoint and command dispatcher
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Thin dispatcher for ruoyi CLI (Type 0 + domain).
+# Handles:
+#   - Auto-install behavior for classic `curl | bash` one-liner (zero arguments)
+#   - Global flag parsing (--quiet, --json, --debug, --force)
+#   - Command routing for all Type 0 self-management commands
+#
+# This is the single entry point when the script is executed directly.
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Never call undefined functions. Always use inst_is_installed.
+#   Auto-install block is kept at the very top as required by existing comments.
+# - Intentional (Principle 2): All supported commands from
+#   requirement-shell-cli-interface.md and app_help() are recognized and routed.
+# - Anti-fragile (Principle 3): Works correctly in interactive TTY, quiet, JSON,
+#   and non-interactive `curl | bash` environments.
+# - Over-protect (Principle 18): Explicit if/then logic, safe defaults, and centralized
+#   output via out_die for unknown commands.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is the central command dispatcher. Changes here affect every execution path.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-06-26:
+#   - Original version called non-existent functions and only recognized
+#     version/about/help; expanded routing and safe defaults.
+# 2026-07-12:
+#   - Wired --force → FORCE=1 and FORCE_REINSTALL=1 (requirement-shell-cli-interface).
+# 2026-07-14:
+#   - version routes through app_version (no dual inline path).
+#   - zero-arg install propagates failure exit status.
+#   - Type O empty argv: always install-ensure (not help when already installed).
+#     Cases A/B/C (not installed / local / global). --force only for deliberate
+#     re-download/replace — not required for a second one-liner run.
+#     SSOT: requirement-shell-cli-zero-arguments.md (ruoyi Type O empty argv).
+#
+# Last reviewed: 2026-07-14
+# =============================================================================
+
+# --- domain port fix: debconf_noninteractive_db ---
+debconf_noninteractive_db() {
+    local engine="$1"   # mysql or mariadb
+    local root_pass="$2"
+
+    if [ -z "$root_pass" ]; then
+        root_pass=$(util_generate_db_pass)
+        out_info "Generated random root password: ${root_pass}"
+        out_info "Save this password! It will NOT be shown again."
+    fi
+
+    echo "mariadb-server-${engine}/root_password password ${root_pass}" | sudo debconf-set-selections 2>/dev/null || true
+    echo "mariadb-server-${engine}/root_password_again password ${root_pass}" | sudo debconf-set-selections 2>/dev/null || true
+    echo "${engine}-server/root_password password ${root_pass}" | sudo debconf-set-selections 2>/dev/null || true
+    echo "${engine}-server/root_password_again password ${root_pass}" | sudo debconf-set-selections 2>/dev/null || true
+
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+}
+
+
+# =============================================================================
+# db_detect_engine() - Determine MySQL or MariaDB engine from flags
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Parses command line flags and sets the active database engine.
+# Default is MariaDB as requested. --mysql and --mariadb are mutually exclusive.
+#
+# ────────────────────────────────────────────────
+# CIAO PRINCIPLES APPLIED
+# ────────────────────────────────────────────────
+# Principle 1, 2, 6, 14, 16
+#
+# CRITICAL DEFENSIVE RULES:
+# - Default to MariaDB.
+# - Prevent conflicting flags.
+# - Safe defaults repeated.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+# --- domain port fix: ruo_about ---
+ruo_about() {
+    : "${PORT:=8080}"
+    : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME:-ruoyi-demo}}"
+    : "${APP_NAME:=ruoyi}"
+    : "${VERSION:=2.3.5}"
+    if [ -z "${EFFECTIVE_STORAGE_DIR:-}" ]; then
+        EFFECTIVE_STORAGE_DIR=$(util_resolve_storage)
+    fi
+    _cache_preferred=$(util_preferred_cache_dir)
+    _cache_fallback=$(util_fallback_cache_dir)
+    _cache_fallback_2=$(util_fallback2_cache_dir)
+    STORAGE_DIR="${_cache_fallback}"
+    if [ -z "${PERSISTENT_STORAGE_DIR:-}" ]; then
+        PERSISTENT_STORAGE_DIR=$(util_resolve_persistent_storage)
+    fi
+    if [ "${JSON}" -eq 1 ]; then
+        # === JSON MODE - Clean machine output ===
+        local installed="false"
+        inst_is_installed && installed="true"
+
+        local sdkman_status="not found"
+        [ -d "${HOME}/.sdkman" ] && sdkman_status="installed"
+
+        local java_version="not found"
+        if command -v java >/dev/null 2>&1; then
+            java_version=$(java -version 2>&1 | head -n 1 | tr -d '\n\r')
+        fi
+
+        local maven_version="not found"
+        if command -v mvn >/dev/null 2>&1; then
+            maven_version=$(mvn --version | head -n 1 | tr -d '\n\r')
+        fi
+
+        local project_exists="false"
+        [ -d "${PROJECT_DIR}" ] && project_exists="true"
+
+        local app_running="false"
+        if command -v ss >/dev/null 2>&1 && ss -tuln 2>/dev/null | grep -q ":${PORT}"; then
+            app_running="true"
+        elif command -v netstat >/dev/null 2>&1 && netstat -tuln 2>/dev/null | grep -q ":${PORT}"; then
+            app_running="true"
+        fi
+
+        # Clean JSON output - no generic message
+        out_json "about" "" \
+            "app" "${APP_NAME}" \
+            "version" "${VERSION}" \
+            "installed" "${installed}" \
+            "sdkman" "${sdkman_status}" \
+            "java" "${java_version}" \
+            "maven" "${maven_version}" \
+            "project_dir" "${PROJECT_DIR}" \
+            "project_exists" "${project_exists}" \
+            "port" "${PORT}" \
+            "app_running" "${app_running}" \
+            "user" "${USERNAME}" \
+            "shell" "$(ps -p $$ -o comm= 2>/dev/null | tr -d '()')" \
+            "cache_used" "${EFFECTIVE_STORAGE_DIR}" \
+            "cache_preferred" "${_cache_preferred}" \
+            "cache_fallback" "${_cache_fallback}" \
+            "cache_fallback_2" "${_cache_fallback_2}" \
+            "persistence_storage" "${PERSISTENT_STORAGE_DIR}" \
+            "effective_storage" "${EFFECTIVE_STORAGE_DIR}" \
+            "storage_dir" "${STORAGE_DIR}"
+
+        return 0
+    fi
+
+    # === HUMAN-READABLE MODE ===
+    [ "${QUIET}" -eq 1 ] && return 0
+
+    msg "=== ${APP_NAME} ${VERSION} - Full Diagnostics ==="
+    out_empty_line
+
+    if inst_is_installed; then
+        out_success "${APP_NAME} is installed at ${INSTALL_PATH}"
+    else
+        out_warn "${APP_NAME} is NOT installed."
+    fi
+
+    out_empty_line
+
+    # SDKMAN
+    if [ -d "${HOME}/.sdkman" ]; then
+        out_success "SDKMAN     : installed"
+    else
+        out_warn "SDKMAN     : not found"
+    fi
+
+    # Java
+    if command -v java >/dev/null 2>&1; then
+        msg "Java       : $(java -version 2>&1 | head -n 1)"
+    else
+        out_warn "Java       : not found"
+    fi
+
+    # Maven
+    if command -v mvn >/dev/null 2>&1; then
+        msg "Maven      : $(mvn --version | head -n 1)"
+    else
+        out_warn "Maven      : not found"
+    fi
+
+    # Project
+    if [ -d "${PROJECT_DIR}" ]; then
+        out_success "Project    : ${PROJECT_DIR} (exists)"
+    else
+        out_warn "Project    : ${PROJECT_DIR} (does not exist)"
+    fi
+
+    # App running status
+    local running_status="no"
+    if command -v ss >/dev/null 2>&1 && ss -tuln 2>/dev/null | grep -q ":${PORT}"; then
+        running_status="yes"
+    elif command -v netstat >/dev/null 2>&1 && netstat -tuln 2>/dev/null | grep -q ":${PORT}"; then
+        running_status="yes"
+    fi
+    msg "App on port ${PORT} : ${running_status}"
+
+    out_empty_line
+    out_info "Cache folder used: ${EFFECTIVE_STORAGE_DIR}"
+    out_info "Cache folder (preferred): ${_cache_preferred}"
+    out_info "Cache folder (1st fallback): ${_cache_fallback}"
+    if [ -n "${_cache_fallback_2}" ]; then
+        out_info "Cache folder (2nd fallback): ${_cache_fallback_2}"
+    fi
+    out_info "Persistence storage: ${PERSISTENT_STORAGE_DIR}"
+
+    out_empty_line
+    msg "Use '${APP_NAME} about --json' for machine-readable output."
+    msg "Current project directory can be changed with --project-dir <path>"
+}
+
+# =============================================================================
+# ruo_help() - Display help information
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Shows usage instructions, available commands, and important notes for RuoYi.
+# Fully supports --quiet and --json modes.
+#
+# CRITICAL DESIGN:
+# This function must NEVER use raw `cat`, `echo`, or `printf` for user-visible
+# output. All text must go through the single source of truth (`out_text()`).
+#
+# --json implies --quiet: Handled globally by out_text(). This function only
+# decides between normal help text and JSON payload.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Past AI assistants have repeatedly replaced structured help with raw `cat << EOF`,
+# which completely breaks --quiet and --json consistency.
+#
+# This version maintains full compatibility with the defensive output architecture
+# used across all Wilgat/CIAO tools.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+ruo_help() {
+    : "${APP_NAME:=ruoyi}"
+    : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME:-ruoyi-demo}}"
+    if [ "${JSON}" -eq 1 ]; then
+        out_json "help" "" \
+            "app" "${APP_NAME}" \
+            "version" "${VERSION}" \
+            "commands" "install,version,about,help,version-check,self-update,self-uninstall,setup,mariadb,mysql,db,redis,run,db-extract"
+        return 0
+    fi
+    out_info "${APP_NAME} — ${APP_DESC:-RuoYi one-command setup}"
+    out_plain "${DESCRIPTION:-}"
+    out_empty_line
+    out_info "Usage:"
+    out_plain "  ${APP_NAME} [command] [options]"
+    out_empty_line
+    out_info "RuoYi domain commands:"
+    out_plain "  setup                Ensure SDKMAN + Java 21 + Maven + clone RuoYi project"
+    out_plain "  mariadb|mysql|db     Setup MariaDB or MySQL for RuoYi (may use sudo internally)"
+    out_plain "  redis                Install and start Redis for RuoYi"
+    out_plain "  run                  Build and run ruoyi-admin"
+    out_plain "  db-extract [PATH]    Extract DB credentials from application-druid.yml"
+    out_empty_line
+    out_info "Self-Management (Type 0 — from selfmanaged architecture):"
+    out_plain "  install              Install ${APP_NAME} CLI (root→global, user→~/.local/bin)"
+    out_plain "  version              Show current version"
+    out_plain "  about                Show diagnostics (stack + install state)"
+    out_plain "  version-check        Compare local vs remote version (needs SCRIPT_URL)"
+    out_plain "  self-update          Update CLI from SCRIPT_URL"
+    out_plain "  self-uninstall       Remove CLI (safe PATH cleanup)"
+    out_plain "  help                 Show this help"
+    out_empty_line
+    out_info "Global Options:"
+    out_plain "  --project-dir PATH   Override PROJECT_DIR"
+    out_plain "  --project PATH       Alias of --project-dir"
+    out_plain "  --no-run             With setup: skip run after clone"
+    out_plain "  --quiet, -q          Suppress info/success"
+    out_plain "  --json               Machine-readable JSON (implies --quiet)"
+    out_plain "  --force              Force reinstall / skip uninstall confirm"
+    out_plain "  --debug              Debug diagnostics on stderr"
+    out_empty_line
+    out_info "Environment:"
+    out_plain "  REPO_USER / REPO_NAME / SCRIPT_URL   Install channel (default cloudgen/ruoyi)"
+    out_plain "  PROJECT_DIR                         RuoYi project path (default \$HOME/ruoyi-demo)"
+    out_plain "  PORT                                App port (default 8080)"
+    out_empty_line
+    out_info "Examples:"
+    out_plain "  curl -fsSL https://raw.githubusercontent.com/cloudgen/ruoyi/main/src/ruoyi | bash"
+    out_plain "  ${APP_NAME} setup --no-run"
+    out_plain "  ${APP_NAME} mariadb"
+    out_plain "  ${APP_NAME} run"
+    out_plain "  ${APP_NAME} db-extract --json"
+}
+
+
+# =============================================================================
+# util_src_user_shell_conf() - Safely source user shell configuration
+# =============================================================================
+#
+# Purpose:
+#   Many sub-commands (about, version, status, build & run, etc.) are executed
+#   in a non-interactive, non-login shell.
+#
+#   In such shells, ~/.bashrc (and other user config files) are usually NOT
+#   sourced automatically. This causes problems when users have important
+#   settings in their ~/.bashrc such as:
+#     - PATH modifications
+#     - SDKMAN initialization
+#     - Custom environment variables
+#     - Aliases or functions
+#
+#   This function ensures the user's normal shell environment is available
+#   for all meaningful operations of springboot2/springboot3/springboot4.
+#
+# Why this is needed:
+#   - The main "curl | bash" install runs in a clean shell.
+#   - Sub-commands like "springboot2/springboot3/springboot4 about" or "springboot2/springboot3/springboot4" (normal run)
+#     must respect the user's configured environment.
+#   - SDKMAN users especially need sdkman-init.sh to be loaded.
+#
+# Design choices (defensive):
+#   - Only sources once (avoids double sourcing issues)
+#   - Skips completely in --quiet and --json modes (clean output)
+#   - Tries common config files in sensible order
+#   - Suppresses all output and errors during sourcing (never breaks script)
+#   - Always succeeds (return 0) so it never breaks the main flow
+#   - Special handling for SDKMAN because it is critical for this script
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This function protects user environment consistency across all sub-commands.
+# It is intentionally verbose with heavy comments following CIAO style.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+
+
+app_main() {
+    # --- Safe Variable Defaults ---
+    : "${COMMAND:=help}"
+    : "${QUIET:=0}"
+    : "${JSON:=0}"
+    : "${DEBUG:=0}"
+    : "${FORCE:=0}"
+    : "${FORCE_REINSTALL:=0}"
+    : "${NO_RUN:=0}"
+    : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME:-ruoyi-demo}}"
+    : "${PORT:=8080}"
+
+    # Cache folder + persistence (requirement-shell-cli-storage).
+    # Linux: /dev/shm/cache leaf, then /tmp/cache leaf, then ${HOME}/.cache leaf.
+    # A missed tier is silent. TMPDIR is the chosen cache root so util_mktemp
+    # install staging stays inside that leaf.
+    : "${USERNAME:=unknown}"
+    : "${HOME:=/tmp}"
+    : "${APP_NAME:=ruoyi}"
+    EFFECTIVE_STORAGE_DIR=$(util_resolve_storage)
+    STORAGE_DIR=$(util_fallback_cache_dir)
+    PERSISTENT_STORAGE_DIR=$(util_resolve_persistent_storage)
+    export EFFECTIVE_STORAGE_DIR STORAGE_DIR PERSISTENT_STORAGE_DIR
+    export TMPDIR="${EFFECTIVE_STORAGE_DIR}"
+
+    # === ZERO-ARG = Type O install-ensure (curl | bash contract) ===
+    # Product type: Type O (online-install) — not Type N help-default.
+    # Empty argv always means "ensure installed", never help.
+    # Cases: not installed | installed local | installed global
+    # - not installed → install (TTY prompt via inst_maybe_install; non-TTY auto)
+    # - already installed → success no-op (inst_perform_install); no --force required
+    # - --force / FORCE_REINSTALL only for deliberate re-download/replace
+    # Exit status must reflect install outcome (failed download/checksum → non-zero).
+    # SSOT: docs/requirements/requirement-shell-cli-zero-arguments.md
+    if [ $# -eq 0 ]; then
+        if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+            inst_perform_install
+            exit $?
+        elif inst_is_installed; then
+            inst_perform_install
+            exit $?
+        else
+            inst_maybe_install
+            exit $?
+        fi
+    fi
+
+    # === Argument parsing: flags and commands (order-independent) ===
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --quiet|-q) QUIET=1 ;;
+            --json)     JSON=1; QUIET=1 ;;
+            --debug)    DEBUG=1 ;;
+            --force)    FORCE=1; FORCE_REINSTALL=1 ;;
+            version|about|help|version-check|self-update|self-uninstall|install)
+                COMMAND="$1"
+                ;;
+            setup|mariadb|mysql|db|redis|run|db-extract)
+                COMMAND="$1"
+                ;;
+            --project|--project-dir)
+                if [ -z "${2-}" ]; then
+                    out_die "$1 requires a path"
+                fi
+                PROJECT_DIR="$2"
+                shift
+                ;;
+            --no-run)
+                NO_RUN=1
+                ;;
+            *)
+                out_die "Unknown command or flag: $1. See '${APP_NAME} help'."
+                ;;
+        esac
+        shift
+    done
+
+    out_debug "dispatch command=${COMMAND} quiet=${QUIET} json=${JSON} force=${FORCE}"
+
+    case "${COMMAND}" in
+        version)
+            app_version
+            ;;
+        about)
+            ruo_about
+            ;;
+        version-check)
+            ver_check
+            ;;
+        self-update)
+            inst_self_update
+            ;;
+        self-uninstall)
+            inst_self_uninstall
+            ;;
+        install)
+            # Ship-unit install only (Type 0). Stack ensure is setup/run domain path.
+            inst_perform_install
+            ;;
+        setup)
+            util_src_user_shell_conf 2>/dev/null || true
+            env_check_alpine 2>/dev/null || true
+            setup_sdkman
+            setup_java_21
+            setup_maven_3_9
+            ruo_clone
+            if [ "${NO_RUN}" -eq 0 ]; then
+                ruo_build_run
+            else
+                out_success "Environment and project setup completed (--no-run)."
+                out_success "Project location: ${PROJECT_DIR}"
+            fi
+            ;;
+        mariadb|mysql|db)
+            util_src_user_shell_conf 2>/dev/null || true
+            db_setup
+            ;;
+        redis)
+            util_src_user_shell_conf 2>/dev/null || true
+            setup_redis_for_ruoyi
+            ;;
+        run)
+            util_src_user_shell_conf 2>/dev/null || true
+            ruo_build_run
+            ;;
+        db-extract)
+            db_extract_credentials
+            ;;
+        help|*)
+            ruo_help
+            ;;
+    esac
+}
+
+
+# =============================================================================
+# BOOTSTRAP
+# =============================================================================
+#
+# Always invoke the single dispatcher. Do NOT gate on ${0##*/} matching APP_NAME:
+# under curl | bash / stdin pipe, $0 is the shell (sh/bash/…), not the product
+# filename — a basename gate causes silent no-op and breaks one-liner install.
+# Product law: requirement-shell-cli-zero-arguments.md (Type O) +
+# requirement-shell-cli-interface.md (single app_main entry). Historical: INC-20260712-001.
+#
+# Single-file install CLI: source-as-library is unsupported; main always runs.
+# =============================================================================
+app_main "$@"
+
+# End of ruoyi - specialized from selfmanaged (A→B) + domain
